@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import struct
 import re
 
 commands          = ['DAT', 'MOV', 'ADD', 'SUB', 'JMP', 'JMZ', 'DJZ', 'CMP']
@@ -25,9 +26,14 @@ def parse_adr(s):
 	return mod,val
 
 def generate_line(code_instr, mod_A, adr_A, mod_B, adr_B):
-	print(mod_B)
+	line=struct.pack('<h', code_instr)
+	line=line+struct.pack('<h', mod_A)
+	line=line+struct.pack('<h', mod_B)
+	line=line+struct.pack('<i', adr_A)
+	line=line+struct.pack('<i', adr_B)
+	return line
 
-def parse(out, s): 
+def parse(s): 
 	out=''
 	s=s.replace('\n', '');
 	s=s.replace(',', ' ');
@@ -52,7 +58,7 @@ def parse(out, s):
 		if (len(s) < 2) or (len(s) > 3):
 			raise ERedParseError("One or two paramters accepted, but not %d", s.count())
 
-	generate_line(code_instr, mod_A, adr_A, mod_B, adr_B)
+	return generate_line(code_instr, mod_A, adr_A, mod_B, adr_B)
 
 # output will be the source with a .red extension 
 def main():
@@ -61,14 +67,16 @@ def main():
 	args=parser.parse_args() 
 	pre, ext=os.path.splitext(args.source)
 	name_dest=pre+'red'
-	dest=open(name_dest, "w")
+	dest=open(name_dest, "wb")
 	for i in open(args.source, "r").readlines():
 		i.replace('\n','') 
 		i=re.sub(r" *;.*$", "", i) 
 		if i != "":
 			if i[0]!=';':
 				try:
-					val=parse(dest, i) # will return a line with bytes
+					val=parse(i) # will return a line with bytes
+					if not val is None:
+						dest.write(val)
 				except ERedParseError as err:
 					print(err)
 					break
