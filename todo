@@ -1,0 +1,62 @@
+corewar with dna :
+
+dna is the source code
+i keep a population of n dna
+i make them fight all versus each other
+i keep the best
+
+dna will be generated and mixed in python
+fights will happen in C to have that being quickly solved. A fight can be saved with an option (save=file.txt) and can be replayed.
+
+DNA is mixing up both winner, and mutate it a bit to generate n children, that will be mixed with current population. I may have keep track of the genealogy and % of mutation.
+
+I could mutate the winning one to generate n of them, instead of mixing.
+
+MMhh
+
+Because i would like multiples ways to exists
+
+So that would be creating families
+
+
+
+But i could just pick the n best, mutate m times each, and take the output and replace the n*m worst by these new ones. m can be 0, so i keep the original as well.
+
+How to find out who wins : number of step to erase all other's cells. If it needs more steps than like 3 times the all memory layout, then i stop the game, and store that number of step for both loosers.
+
+
+http://vyznev.net/corewar/guide.html
+
+https://users.obs.carnegiescience.edu/birk/COREWAR/DOCS/guide2red.txt
+
+mutation = change one line, or duplicate a random size to a random another place
+
+A win isn't when no more cell is owned by the other, but when there is an error in one's program.
+like being asked to run a DAT command (that is pretty much it actually).
+
+Should i bother using 32 bits to store everything ? I have to check if i can have the first 4 bits and turn that into an integer easily.
+Or i save/read a struct, and not bother if some types are a bit wide. it's just a source code.
+
+
+
+
+tools needed : 
+	runner, that will read code A and code B, and run and see who wins (first to run a DAT or something that isn't runnable (could be a bug))
+	compiler, that will turn ascii readable code into pseudo code
+	dna mixing, that also has to understand code, and mix two codes together
+	dna mutation, that also has to understand code, and mutate n% of it, or n items in it
+	championship, which will handle x sources, and sort them to find the fittest (meaning having them fighting against each other)
+
+
+color code : green for first player, red for second. each char is the first letter of the instruction (lowercase if already taken, or integer. yeah integer is good).
+Underline to find the currently run command.
+
+the program will all be owned by player.
+
+locate program at start
+	like i have a core of 4000.
+	program A is randomly put at 500, and has a length of 100.
+	program B has a lenght of 50
+	random start for B is 4000-100-50 -> 3800. 
+	if random start is 200, then it start at 200
+	if random start is > 500-50, like 470, then it start at 500+100.
