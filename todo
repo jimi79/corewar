@@ -60,3 +60,7 @@ locate program at start
 	random start for B is 4000-100-50 -> 3800. 
 	if random start is 200, then it start at 200
 	if random start is > 500-50, like 470, then it start at 500+100.
+
+
+random notes : 
+https://stackoverflow.com/questions/32619428/increasing-array-size-dynamically-in-c
