@@ -64,3 +64,23 @@ locate program at start
 
 random notes : 
 https://stackoverflow.com/questions/32619428/increasing-array-size-dynamically-in-c
+
+
+
+
+mov 1,2 move the whole instruction
+move #1, 2 move only a value....
+
+
+---
+genome
+
+write a program that can generate a random line. the line will be generated in text. so it's random (MOV,JMP,...) (#@ ) (0..4096).
+write a program that can modify an existing line, by changing one line to another (complete line)
+in any case, if there are too many lines, remove randomly till there are less than 200 lines
+
+----
+todo later
+
+if size too little, raise error 
+write a program that can mix 2 programs (later)

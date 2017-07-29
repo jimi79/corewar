@@ -1,15 +1,13 @@
+#include <sys/ioctl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
-const int size_mem=4096;
-
-char file_A[1024];
-char file_B[1024];
-short debug_level;
-short display; // 1 true or 0 false
-
-
+#define size_core 100
+#define max_size_src 1024
+#define max_run 200
 
 // structure of source : 
 // 4 bytes for the type
@@ -17,12 +15,12 @@ short display; // 1 true or 0 false
 // 2 bytes for the mode for B
 // 12 bytes for A value
 // 12 bytes for B value
-// total = 32 bits, so 4 chars
+// total=32 bits, so 4 chars
 
 // 
 
 struct s_red_line {
-	int type; /*
+	signed int type; /*
 0 DAT
 1 MOV
 2 ADD
@@ -31,15 +29,99 @@ struct s_red_line {
 5 JMZ
 6 DJZ
 7 CMP */
-	int mod_A; /*
+	signed int mod_A; /*
 mode for adresse A : 
 * 0 : immediate "#"
 * 1 : relative (value of address) ""
 * 2 : indirect (value of value of address) */
-	int mod_B;
-	int adr_A; // address value
-	int adr_B;
+	signed int mod_B;
+	signed int adr_A; // address value
+	signed int adr_B;
 };
+
+// what do i need to store in CORE ?
+// well, i need to store one line of code, and last owner (A or B, 1, or 2, or null)
+// and i think that's it
+
+struct cell {
+	struct s_red_line code;
+	int owner; // 0 for none, 1 for A, 2 for B
+};
+
+char file_A[1024];
+char file_B[1024];
+short debug_level;
+short display; // 1 true or 0 false
+struct s_red_line src_A[max_size_src]; // araray of struct s_red_line
+struct s_red_line src_B[max_size_src]; // araray of struct s_red_line
+struct cell core[size_core];
+int cursor_A;
+int cursor_B;
+int screen_width;
+int screen_height;
+// char log_filename[1024]="";
+// int log_enabled=0;
+// FILE *log_file=NULL;
+
+//int write_log(char s[1024]) {
+//	if (log_enabled) {
+//		fwrite(s, 1, strlen(s)+1, log_file);
+//	}
+//}
+
+int print_short_type(struct s_red_line *s) {
+	switch (s->type) {
+		case -1 : { printf(" "); } break;
+		case 0  : { printf("D"); } break;
+		case 1  : { printf("M"); } break;
+		case 2  : { printf("A"); } break;
+		case 3  : { printf("S"); } break;
+		case 4  : { printf("J"); } break;
+		case 5  : { printf("j"); } break;
+		case 6  : { printf("d"); } break;
+		case 7  : { printf("C"); } break;
+	}
+} 
+
+int display_cell(int idx) {
+// add a paramter to underline the instruction
+	int x;
+	int y;
+	x=idx % screen_width;
+	y=idx / screen_width; 
+	printf("\033[%d;%dH", y, x);
+	int bgcolor, owner;
+	owner=core[idx].owner;
+	if (owner==0) { bgcolor=0; }
+	if (owner==1) { bgcolor=41; }
+	if (owner==2) { bgcolor=44; }
+	printf("\033[%um", bgcolor); 
+	print_short_type(&core[idx].code);
+	printf("\033[0m"); 
+}
+
+int copy_cell(int from, int to) {
+	core[to % size_core].code.type =core[from % size_core].code.type;
+	core[to % size_core].code.mod_A=core[from % size_core].code.mod_A;
+	core[to % size_core].code.mod_B=core[from % size_core].code.mod_B;
+	core[to % size_core].code.adr_A=core[from % size_core].code.adr_A;
+	core[to % size_core].code.adr_B=core[from % size_core].code.adr_B;
+	display_cell(to);
+}
+
+int install_program(struct s_red_line src[max_size_src], int size, int to, int owner) {
+	int i;
+	int dest;
+	for (i=0; i < size; i++) { 
+		dest=(to + i) % size_core;
+		core[dest].code.type =src[i].type;
+		core[dest].code.mod_A=src[i].mod_A; 
+		core[dest].code.mod_B=src[i].mod_B; 
+		core[dest].code.adr_A=src[i].adr_A; 
+		core[dest].code.adr_B=src[i].adr_B; 
+		core[dest].owner=owner;
+	}
+}
 
 int print_red_line(struct s_red_line *s) {
 	char type[4]; // instruction
@@ -66,19 +148,19 @@ int print_red_line(struct s_red_line *s) {
 		case 2 : { mod_B='@'; } break;
 	}	
 
-	printf("%s %c%u, %c%u\n", type, mod_A, s->adr_A, mod_B, s->adr_B);
+	printf("%s %c%d, %c%d", type, mod_A, s->adr_A, mod_B, s->adr_B);
 }
 
 int parse_parameters(int argc, char *argv[]) { // use ->truc instead of &val.truc
 	short i; 
 	short mandatory=2;
-	for(i = 1; i < argc; i++) {
-		char *ptr = strchr(argv[i], '=');
+	for(i=1; i < argc; i++) {
+		char *ptr=strchr(argv[i], '=');
 		if (ptr) {
-			int index = ptr - argv[i];
+			int index=ptr - argv[i];
 			char code[index];
 			memcpy(code, &argv[i][0], index);
-			code[index] = '\0'; 
+			code[index]='\0'; 
 			char value[strlen(argv[i]) - index];
 			memcpy(value, &argv[i][index + 1], strlen(argv[i]) - index);
 			int ok=0;
@@ -90,12 +172,17 @@ int parse_parameters(int argc, char *argv[]) { // use ->truc instead of &val.tru
 				memcpy(file_B, value, strlen(value));
 				mandatory--;
 			} 
-			if (!strcmp(code, "debug_level")) {
-				debug_level = (short)strtol(value, NULL, 10); 
+			if (!strcmp(code, "debug")) {
+				debug_level=(short)strtol(value, NULL, 10); 
+				if (debug_level>0) { display=1; }
 			} 
 			if (!strcmp(code, "display")) { 
-				display = (short)strtol(value, NULL, 10); 
+				display=(short)strtol(value, NULL, 10); 
 			} 
+			//if (!strcmp(code, "log")) { 
+			//	memcpy(log_filename, value, strlen(value));
+			//	log_enabled=1;
+			//} 
 			
 		} else
 		{
@@ -110,27 +197,15 @@ int parse_parameters(int argc, char *argv[]) { // use ->truc instead of &val.tru
 	return 1;
 }; 
 
-int read_src(char filename[1024], struct s_red_line *src) {
-	int count=0;
-	FILE *in = NULL;
-	if ((in = fopen(filename, "rb")) == NULL) {
+int read_src(char filename[max_size_src], struct s_red_line src[max_size_src]) {
+	FILE *in=NULL;
+	if ((in=fopen(filename, "rb")) == NULL) {
 		fprintf(stderr, "Error while opening %s\n", filename);
-		return 1;
+		return 0;
 	}
-	struct s_red_line tmp;
-	int read=sizeof(struct s_red_line);
-	while (read==sizeof(struct s_red_line)) {
-		read=fread(&tmp, 1, sizeof(struct s_red_line), in);
-		if (read==sizeof(struct s_red_line)) {
-			count++;
-		}
-	}
-
-	printf("here?\n");
-	src=malloc(count * sizeof(*src)); // N times sizeof the struct
 	int i=0;
-	fseek(in, 0, SEEK_SET);
-	int j; // temp var
+	int j;
+	int read;
 	while (1) { 
 		src[i].type=0; src[i].mod_A=0; src[i].mod_B=0; src[i].adr_A=0; src[i].adr_B=0;
 		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].type =j; } else break;
@@ -138,9 +213,227 @@ int read_src(char filename[1024], struct s_red_line *src) {
 		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].mod_B=j; } else break;
 		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].adr_A=j; } else break;
 		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].adr_B=j; } else break; 
+		//if (debug_level) { print_red_line(&src[i]); }
 		i++;
 	} 
-	return count;
+	return i;
+}
+
+int display_full_core() {
+	int i;
+	for (i=0;i < size_core; i++) {
+		display_cell(i);
+	}
+}
+
+int get_val(int method, int address) {
+	// return val
+	if (method==0) { return address; }
+	if (method==1) { 
+		if (address < 0) { address+=size_core; }
+		// we have to return value of B/A 
+	}
+}
+
+int locate_log(int shift) {
+	printf("\033[%d;%dH\033[2K", screen_height-2+shift, 0);
+}
+
+int locate_cell(int idx) {
+	int x,y;
+	x=idx % screen_width;
+	y=idx / screen_width; 
+	printf("\033[%d;%dH", y, x);
+}
+
+int adr(int val) {// return proper address, based on core size
+	if (val < 0) { val+=size_core; }
+	val=val%size_core;
+	return val;
+}
+
+
+int execute(int idx, int owner) {
+  int old_idx;
+	old_idx=idx; 
+
+
+
+	struct s_red_line r;
+	r=core[idx].code;
+	// return -1 if the guy lose
+	if ((r.type<1) || (r.type>7)) {
+		return -1;
+	}
+	
+	int A, B; // temp values
+	int A_is_adr=1; // A is an address. otherwise it's just a value. If it's an address, you copy the entire instruction
+
+	int err=0;
+
+	int jump=0; // if 1, then we don't increment cursor location
+
+	char short_name=' ';
+	switch (owner) {
+		case 1: { short_name='A'; } break;
+		case 2: { short_name='B'; } break;
+	}
+	if (debug_level) { 
+		locate_log(-1);
+		print_red_line(&r);
+	}
+
+	switch (r.type) {
+		case 1: { // MOV
+			switch (r.mod_A) {
+				case 0: { A_is_adr=0; A=r.adr_A;
+				} break;
+				case 1: { A=adr(idx+r.adr_A); } break; 
+				case 2: { A=adr(idx+r.adr_A); 
+									A=adr(idx+core[A].code.adr_B);
+				} break; 
+			}
+			switch (r.mod_B) {
+				case 0: { err=1; } break;
+				case 1: { B=adr(idx+r.adr_B); } break;
+				case 2: {
+					B=adr(idx+r.adr_B);
+					B=adr(idx+core[B].code.adr_B);
+				} break;
+			} 
+			if (!err) {
+				if (A_is_adr) {
+					if (debug_level) {
+						locate_log(0);
+						printf("program %c, copying command at %d to %d (%d)", short_name, A, adr(B-idx), B);
+					}
+					copy_cell(A, B);
+					core[B].owner=owner; // does writing a value change the ownership ? boarpf
+					display_cell(B);
+				}
+				else {
+					if (debug_level) {
+						locate_log(0);
+						printf("program %c, writing value of B %d in %d (%d)", short_name, A, adr(B-idx), B);
+					}
+					core[B].code.adr_B=A; 
+					core[B].owner=owner; // does writing a value change the ownership ? boarpf
+					display_cell(B);
+				} 
+			}
+		} break;
+		case 2: case 3: { // ADD // SUB
+			switch (r.mod_A) {
+				case 0: { A=r.adr_A;
+				} break;
+				case 1: { A=adr(idx+r.adr_A); 
+									A=core[A].code.adr_B; 
+				} break; 
+				case 2: { A=adr(idx+r.adr_A); 
+									A=adr(core[A].code.adr_B);
+									A=core[idx+A].code.adr_B; 
+				} break; 
+			}
+			switch (r.mod_B) {
+				case 0: { err=1; } break;
+				case 1: { B=r.adr_B; } break;
+				case 2: { 
+					B=adr(r.adr_B+idx);
+					B=core[B].code.adr_B;
+				} break;
+			} 
+			if (!err) { 
+				B=adr(B+idx);
+
+				if (r.type==2) {
+					core[B].code.adr_B+=A;
+					if (debug_level) {
+						locate_log(0);
+						printf("program %c, adding value %d in %d (%d) -> %d", short_name, A, adr(B-idx), B, core[B].code.adr_B);
+					}
+				}
+				if (r.type==3) {
+					core[B].code.adr_B-=A; 
+					if (debug_level) {
+						locate_log(0);
+						printf("program %c, substracting value %d in %d (%d) -> %d", short_name, A, adr(B-idx), B, core[B].code.adr_B);
+					} 
+				}
+			}
+		}
+		case 4: {
+			switch (r.mod_B) {
+				case 0: { err=1; } break;
+				case 1: { B=adr(idx+r.adr_B); } break;
+				case 2: {
+					B=adr(idx+r.adr_B);
+					B=adr(idx+core[B].code.adr_B);
+				} break;
+			} 
+			if (!err) {
+				jump=1;
+				if (debug_level) {
+					locate_log(0);
+					printf("program %c, jumping to %d (%d)", short_name, adr(B-idx), B);
+				}
+				idx=B; 
+			}
+		}
+		case 5: {
+			switch (r.mod_A) {
+				case 0: { A=r.adr_A;
+				} break;
+				case 1: { A=adr(idx+r.adr_A); 
+									A=core[A].code.adr_B; 
+				} break; 
+				case 2: { A=adr(idx+r.adr_A); 
+									A=adr(core[A].code.adr_B);
+									A=core[idx+A].code.adr_B; 
+				} break; 
+			}
+			switch (r.mod_B) {
+				case 0: { err=1; } break;
+				case 1: { B=r.adr_B; } break;
+				case 2: { 
+					B=adr(r.adr_B+idx);
+					B=core[B].code.adr_B;
+				} break;
+			} 
+			if (A==0) {
+				if (debug_level) {
+					locate_log(0);
+					printf("program %c, jumping because %d == 0, to %d (%d)", short_name, A, adr(B-idx), B);
+				}
+				jump=1;
+				idx=adr(B+idx);
+			} 
+			else {
+				if (debug_level) {
+					locate_log(0);
+					printf("program %c, NOT jumping because %d != 0", short_name, A);
+				}
+			}
+		} 
+	}
+	printf("\033[%d;%dH", screen_height-1, 0);
+	if (err) {
+		idx=-1;
+		locate_log(0);
+		printf("program %c, error : ", short_name);
+		print_red_line(&r);
+	}
+	else {
+		if (!jump) { idx++; idx=adr(idx); };
+	}
+
+	return idx;
+}
+
+int get_term_size() { 
+	struct winsize w;
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); 
+	screen_width=w.ws_col;
+	screen_height=w.ws_row;
 }
 
 int main(int argc, char *argv[]) {
@@ -148,15 +441,125 @@ int main(int argc, char *argv[]) {
 		return 1;
 	} 
 
-	struct s_red_line *src_A; // araray of struct s_red_line
-	int count;
-	count=read_src(file_A, src_A); // SRC_A will have to be allocated in the function 
+	int size_A=read_src(file_A, src_A); // SRC_A will have to be allocated in the function 
+	int size_B=read_src(file_B, src_B); // SRC_B will have to be allocated in the function 
+
+	// TODO display source code for each if debug > 5
+
+	if (!size_A) {
+		return 0;
+	} 
+	if (!size_B) {
+		return 0;
+	}
 
 	int i;
-	for(i=0;i<count;i++) {
-		print_red_line(&src_A[i]); // but then maybe here i could work without & and change my function
+	for (i=0;i<size_core;i++) {
+		core[i].code.type=0; // at first, we write DAT #0, #0 everywhere
+		core[i].code.mod_A=0;
+		core[i].code.mod_B=0;
+		core[i].code.adr_A=0;
+		core[i].code.adr_B=0;
 	} 
-	free(src_A);
 
+	if (size_A + size_B > size_core * 2) {
+		fprintf(stderr, "Programs are too big, or memory too tiny\n");
+		return 1;
+	}
+
+	srand(time(NULL));
+	cursor_A=rand() % size_core;
+	int left;
+	left=size_core - size_A - size_B;
+	cursor_B=rand() % left;
+	if (cursor_B > (cursor_A - size_B)) {
+		cursor_B=cursor_B + size_A + size_B;
+	}
+	int tmp_A, tmp_B;
+	tmp_A=cursor_A;
+	tmp_B=cursor_B;
+
+	//printf("ca=%u cb=%u\n", cursor_A, cursor_B);
+
+	get_term_size();
+
+	for (i=0; i < size_A; i++) {
+		install_program(src_A, size_A, cursor_A, 1);
+	}
+	for (i=0; i < size_B; i++) {
+		install_program(src_B, size_B, cursor_B, 2);
+	}
+	
+	if (display) {
+		printf("\033[2J");
+		display_full_core(); 
+		printf("\033[%u;%uH", screen_height - 1,0);
+	}
+
+	int outcome=100; // outcome of the match. 100=tie, 101 A wins, 102 B wins
+
+	for (i=0;i<max_run;i++) {
+	//for (i=0;i<4;i++) {
+		// break if someone fails
+
+		tmp_A=execute(cursor_A, 1); // if -1, then lose
+		if (tmp_A==-1) {
+			outcome=102;
+			break;
+		}
+		if (debug_level>9) { locate_cell(cursor_A); getchar(); }
+
+		if (outcome==100) {
+			tmp_B=execute(cursor_B, 2); // if -1, then lose
+			if (tmp_B==-1) {
+				outcome=101;
+				break;
+			} 
+			if (debug_level>9) { locate_cell(cursor_B); getchar(); }
+		}
+		cursor_A=tmp_A;
+		cursor_B=tmp_B; 
+	} 
+	printf("\033[%d;%dH", screen_height-1, 0);
+	if (display) {
+		switch (outcome) {
+			case 100: { printf("Tie\n"); } break;
+			case 101: { printf("A win\n"); } break;
+			case 102: { printf("B win\n"); } break;
+		}
+	} 
+	if (debug_level>5) {
+		int dotwritten=0;
+		printf("\n------core dump -----\n");
+		i=0;
+		while (i < size_core) { 
+			while ((i < size_core) &&
+						 (core[i].code.type==0) &&
+					   (core[i].code.mod_A==0) &&
+					   (core[i].code.mod_B==0) &&
+					   (core[i].code.adr_A==0) &&
+					   (core[i].code.adr_B==0)) { printf("."); i++; dotwritten=1; }
+			if (i < size_core) { 
+				if (dotwritten) { printf("\n"); }
+				print_red_line(&core[i].code);
+				if (i==cursor_A) {
+					 printf(" <--- cursor A");
+				};
+				if (i==cursor_B) {
+					 printf(" <--- cursor B");
+				};
+				printf("\n");
+				dotwritten=0;
+				i++;
+			}
+		}
+		if (dotwritten) { printf("\n"); }
+	}
+
+
+
+
+
+	return outcome;
 
 }
