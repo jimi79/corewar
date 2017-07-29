@@ -5,9 +5,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#define size_core 100
+#define size_core 4096
 #define max_size_src 1024
-#define max_run 200
 
 // structure of source : 
 // 4 bytes for the type
@@ -83,13 +82,18 @@ int print_short_type(struct s_red_line *s) {
 	}
 } 
 
+int locate_cell(int idx) {
+	int x,y;
+	x=idx % screen_width + 1;
+	y=idx / screen_width + 1; 
+	printf("\033[%d;%dH", y, x);
+	//locate_log(-2);
+	//printf("x=%d y=%d", x, y);
+}
+
 int display_cell(int idx) {
 // add a paramter to underline the instruction
-	int x;
-	int y;
-	x=idx % screen_width;
-	y=idx / screen_width; 
-	printf("\033[%d;%dH", y, x);
+	locate_cell(idx);
 	int bgcolor, owner;
 	owner=core[idx].owner;
 	if (owner==0) { bgcolor=0; }
@@ -122,6 +126,13 @@ int install_program(struct s_red_line src[max_size_src], int size, int to, int o
 		core[dest].owner=owner;
 	}
 }
+int pause_locate(int cursor) {
+	locate_cell(cursor);
+	if (debug_level>9) { getchar(); } else {
+		if (display) { usleep(display * 10000); }
+	}
+	fflush(stdout);
+} 
 
 int print_red_line(struct s_red_line *s) {
 	char type[4]; // instruction
@@ -239,45 +250,37 @@ int locate_log(int shift) {
 	printf("\033[%d;%dH\033[2K", screen_height-2+shift, 0);
 }
 
-int locate_cell(int idx) {
-	int x,y;
-	x=idx % screen_width;
-	y=idx / screen_width; 
-	printf("\033[%d;%dH", y, x);
-}
-
 int adr(int val) {// return proper address, based on core size
 	if (val < 0) { val+=size_core; }
 	val=val%size_core;
 	return val;
-}
-
+} 
 
 int execute(int idx, int owner) {
-  int old_idx;
-	old_idx=idx; 
-
-
-
 	struct s_red_line r;
+
+	char short_name=' ';
+	switch (owner) {
+		case 1: { short_name='A'; } break;
+		case 2: { short_name='B'; } break;
+	} 
+
 	r=core[idx].code;
 	// return -1 if the guy lose
 	if ((r.type<1) || (r.type>7)) {
+		if (debug_level) {
+			locate_log(0);
+			printf("program %c, syntax error");
+		}
 		return -1;
 	}
 	
 	int A, B; // temp values
 	int A_is_adr=1; // A is an address. otherwise it's just a value. If it's an address, you copy the entire instruction
 
-	int err=0;
-
+	int err=0; 
 	int jump=0; // if 1, then we don't increment cursor location
 
-	char short_name=' ';
-	switch (owner) {
-		case 1: { short_name='A'; } break;
-		case 2: { short_name='B'; } break;
-	}
 	if (debug_level) { 
 		locate_log(-1);
 		print_red_line(&r);
@@ -331,7 +334,7 @@ int execute(int idx, int owner) {
 				} break; 
 				case 2: { A=adr(idx+r.adr_A); 
 									A=adr(core[A].code.adr_B);
-									A=core[idx+A].code.adr_B; 
+									A=adr(core[idx+A].code.adr_B); 
 				} break; 
 			}
 			switch (r.mod_B) {
@@ -339,7 +342,7 @@ int execute(int idx, int owner) {
 				case 1: { B=r.adr_B; } break;
 				case 2: { 
 					B=adr(r.adr_B+idx);
-					B=core[B].code.adr_B;
+					B=adr(core[B].code.adr_B);
 				} break;
 			} 
 			if (!err) { 
@@ -360,8 +363,8 @@ int execute(int idx, int owner) {
 					} 
 				}
 			}
-		}
-		case 4: {
+		} break;
+		case 4: { // JMP
 			switch (r.mod_B) {
 				case 0: { err=1; } break;
 				case 1: { B=adr(idx+r.adr_B); } break;
@@ -376,19 +379,19 @@ int execute(int idx, int owner) {
 					locate_log(0);
 					printf("program %c, jumping to %d (%d)", short_name, adr(B-idx), B);
 				}
-				idx=B; 
+				idx=B;
 			}
-		}
-		case 5: {
+		} break;
+		case 5: { // JMZ
 			switch (r.mod_A) {
 				case 0: { A=r.adr_A;
 				} break;
 				case 1: { A=adr(idx+r.adr_A); 
-									A=core[A].code.adr_B; 
+									A=adr(core[A].code.adr_B); 
 				} break; 
 				case 2: { A=adr(idx+r.adr_A); 
 									A=adr(core[A].code.adr_B);
-									A=core[idx+A].code.adr_B; 
+									A=adr(core[idx+A].code.adr_B); 
 				} break; 
 			}
 			switch (r.mod_B) {
@@ -413,7 +416,84 @@ int execute(int idx, int owner) {
 					printf("program %c, NOT jumping because %d != 0", short_name, A);
 				}
 			}
-		} 
+		}  break;
+		case 6: { // DJZ 
+			switch (r.mod_A) {
+				case 0: { err=1; } break;
+				case 1: { A=r.adr_A; } break;
+				case 2: { 
+					A=adr(r.adr_A+idx);
+					A=adr(core[A].code.adr_A);
+				} break;
+			} 
+			switch (r.mod_B) {
+				case 0: { err=1; } break;
+				case 1: { B=adr(idx+r.adr_B); } break;
+				case 2: {
+					B=adr(idx+r.adr_B);
+					B=adr(idx+core[B].code.adr_B);
+				} break;
+			} 
+			A=adr(idx+A);
+			core[A].code.adr_B-=1;
+			A=core[A].code.adr_B;
+			if (A==0) {
+				if (debug_level) {
+					locate_log(0);
+					printf("program %c, jumping because %d == 0, to %d (%d)", short_name, A, adr(B-idx), B);
+				}
+				jump=1;
+				idx=B;
+			} 
+			else {
+				if (debug_level) {
+					locate_log(0);
+					printf("program %c, NOT jumping because %d != 0", short_name, A);
+				}
+			}
+		} break; 
+		case 7: { // CMP : skip if not equal
+			switch (r.mod_A) {
+				case 0: { A=r.adr_A;
+				} break;
+				case 1: {
+					A=adr(idx+r.adr_A); 
+					A=core[A].code.adr_B;
+				} break; 
+				case 2: {
+					A=adr(idx+r.adr_A); 
+					A=adr(idx+core[A].code.adr_B);
+					A=core[A].code.adr_B;
+				} break; 
+			}
+			switch (r.mod_B) {
+				case 0: { B=r.adr_B;
+				} break;
+				case 1: {
+					B=adr(idx+r.adr_B); 
+					B=core[B].code.adr_B;
+				} break; 
+				case 2: {
+					B=adr(idx+r.adr_B); 
+					B=adr(idx+core[B].code.adr_B);
+					B=core[B].code.adr_B;
+				} break; 
+			}
+			if (A==B) {
+				if (debug_level) {
+					locate_log(0);
+					printf("program %c, NOT skipping next line because %d == %d", short_name, A, B);
+				}
+			}
+			else {
+				jump=1;
+				idx=adr(idx+2); 
+				if (debug_level) {
+					locate_log(0);
+					printf("program %c, skipping next line because %d != %d", short_name, A, B);
+				}
+			} 
+		}
 	}
 	printf("\033[%d;%dH", screen_height-1, 0);
 	if (err) {
@@ -469,6 +549,7 @@ int main(int argc, char *argv[]) {
 
 	srand(time(NULL));
 	cursor_A=rand() % size_core;
+	//cursor_A=98;
 	int left;
 	left=size_core - size_A - size_B;
 	cursor_B=rand() % left;
@@ -498,24 +579,26 @@ int main(int argc, char *argv[]) {
 
 	int outcome=100; // outcome of the match. 100=tie, 101 A wins, 102 B wins
 
+	int max_run = size_core * 2;
+
 	for (i=0;i<max_run;i++) {
 	//for (i=0;i<4;i++) {
 		// break if someone fails
 
 		tmp_A=execute(cursor_A, 1); // if -1, then lose
+		pause_locate(cursor_A);
 		if (tmp_A==-1) {
 			outcome=102;
 			break;
 		}
-		if (debug_level>9) { locate_cell(cursor_A); getchar(); }
 
 		if (outcome==100) {
 			tmp_B=execute(cursor_B, 2); // if -1, then lose
+			pause_locate(cursor_B);
 			if (tmp_B==-1) {
 				outcome=101;
 				break;
 			} 
-			if (debug_level>9) { locate_cell(cursor_B); getchar(); }
 		}
 		cursor_A=tmp_A;
 		cursor_B=tmp_B; 
@@ -554,12 +637,6 @@ int main(int argc, char *argv[]) {
 			}
 		}
 		if (dotwritten) { printf("\n"); }
-	}
-
-
-
-
-
-	return outcome;
-
+	} 
+	return outcome; 
 }
