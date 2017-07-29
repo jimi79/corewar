@@ -73,6 +73,7 @@ def main():
 		i=re.sub(r" *;.*$", "", i) 
 		if i != "":
 			if i[0]!=';':
+				val=None
 				try:
 					instr, mod_A, adr_A, mod_B, adr_B = parse(i)
 					if not instr is None:
