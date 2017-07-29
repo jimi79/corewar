@@ -79,8 +79,24 @@ write a program that can generate a random line. the line will be generated in t
 write a program that can modify an existing line, by changing one line to another (complete line)
 in any case, if there are too many lines, remove randomly till there are less than 200 lines
 
+---
+championship
+
+how to sort them by perf ? well, i think have all of them fight against all of them, and score is the number of win. but 100 * 100 can be long, can't it
+well maybe not that much. 
+and remove similar programs, if any (by comparing md5s)
+and have them fight 5 times at least, because the outcome can change
+
+maybe i'll use bash. i need to write how progams will call each other
+
+
+
 ----
 todo later
 
-if size too little, raise error 
+if size of core too little to host two programs, raise error 
+if size of display too little to display mem, raise error
 write a program that can mix 2 programs (later)
+
+
+

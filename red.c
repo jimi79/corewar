@@ -70,14 +70,14 @@ int screen_height;
 
 int print_short_type(struct s_red_line *s) {
 	switch (s->type) {
-		case -1 : { printf(" "); } break;
-		case 0  : { printf("D"); } break;
+		case -1 : { printf(" "); } break; // cannot happen, default value in mem is DAT #0,#0
+		case 0  : { printf("."); } break;
 		case 1  : { printf("M"); } break;
 		case 2  : { printf("A"); } break;
 		case 3  : { printf("S"); } break;
 		case 4  : { printf("J"); } break;
 		case 5  : { printf("j"); } break;
-		case 6  : { printf("d"); } break;
+		case 6  : { printf("d"); } break; // DJZ, not DAT
 		case 7  : { printf("C"); } break;
 	}
 } 
@@ -110,7 +110,7 @@ int copy_cell(int from, int to) {
 	core[to % size_core].code.mod_B=core[from % size_core].code.mod_B;
 	core[to % size_core].code.adr_A=core[from % size_core].code.adr_A;
 	core[to % size_core].code.adr_B=core[from % size_core].code.adr_B;
-	display_cell(to);
+	if (display) { display_cell(to); }
 }
 
 int install_program(struct s_red_line src[max_size_src], int size, int to, int owner) {
@@ -129,7 +129,7 @@ int install_program(struct s_red_line src[max_size_src], int size, int to, int o
 int pause_locate(int cursor) {
 	locate_cell(cursor);
 	if (debug_level>9) { getchar(); } else {
-		if (display) { usleep(display * 10000); }
+		if (display) { usleep(display * 1000); }
 	}
 	fflush(stdout);
 } 
@@ -265,16 +265,7 @@ int execute(int idx, int owner) {
 		case 2: { short_name='B'; } break;
 	} 
 
-	r=core[idx].code;
-	// return -1 if the guy lose
-	if ((r.type<1) || (r.type>7)) {
-		if (debug_level) {
-			locate_log(0);
-			printf("program %c, syntax error");
-		}
-		return -1;
-	}
-	
+
 	int A, B; // temp values
 	int A_is_adr=1; // A is an address. otherwise it's just a value. If it's an address, you copy the entire instruction
 
@@ -285,6 +276,16 @@ int execute(int idx, int owner) {
 		locate_log(-1);
 		print_red_line(&r);
 	}
+
+	r=core[idx].code;
+	// return -1 if the guy lose
+	if ((r.type<1) || (r.type>7)) {
+		if (debug_level) {
+			locate_log(0);
+			printf("program %c, syntax error", short_name);
+		}
+		return -1;
+	} 
 
 	switch (r.type) {
 		case 1: { // MOV
@@ -312,7 +313,7 @@ int execute(int idx, int owner) {
 					}
 					copy_cell(A, B);
 					core[B].owner=owner; // does writing a value change the ownership ? boarpf
-					display_cell(B);
+					if (display) { display_cell(B); }
 				}
 				else {
 					if (debug_level) {
@@ -321,7 +322,7 @@ int execute(int idx, int owner) {
 					}
 					core[B].code.adr_B=A; 
 					core[B].owner=owner; // does writing a value change the ownership ? boarpf
-					display_cell(B);
+					if (display) { display_cell(B); }
 				} 
 			}
 		} break;
@@ -349,14 +350,14 @@ int execute(int idx, int owner) {
 				B=adr(B+idx);
 
 				if (r.type==2) {
-					core[B].code.adr_B+=A;
+					core[B].code.adr_B=adr(core[B].code.adr_B+A);
 					if (debug_level) {
 						locate_log(0);
 						printf("program %c, adding value %d in %d (%d) -> %d", short_name, A, adr(B-idx), B, core[B].code.adr_B);
 					}
 				}
 				if (r.type==3) {
-					core[B].code.adr_B-=A; 
+					core[B].code.adr_B=adr(core[B].code.adr_B-A);
 					if (debug_level) {
 						locate_log(0);
 						printf("program %c, substracting value %d in %d (%d) -> %d", short_name, A, adr(B-idx), B, core[B].code.adr_B);
@@ -495,12 +496,13 @@ int execute(int idx, int owner) {
 			} 
 		}
 	}
-	printf("\033[%d;%dH", screen_height-1, 0);
 	if (err) {
 		idx=-1;
-		locate_log(0);
-		printf("program %c, error : ", short_name);
-		print_red_line(&r);
+		if (debug_level) {
+			locate_log(0);
+			printf("program %c, error : ", short_name);
+			print_red_line(&r);
+		}
 	}
 	else {
 		if (!jump) { idx++; idx=adr(idx); };
@@ -586,7 +588,7 @@ int main(int argc, char *argv[]) {
 		// break if someone fails
 
 		tmp_A=execute(cursor_A, 1); // if -1, then lose
-		pause_locate(cursor_A);
+		if (display) { pause_locate(cursor_A); };
 		if (tmp_A==-1) {
 			outcome=102;
 			break;
@@ -594,7 +596,7 @@ int main(int argc, char *argv[]) {
 
 		if (outcome==100) {
 			tmp_B=execute(cursor_B, 2); // if -1, then lose
-			pause_locate(cursor_B);
+			if (display) { pause_locate(cursor_B); };
 			if (tmp_B==-1) {
 				outcome=101;
 				break;
@@ -603,7 +605,9 @@ int main(int argc, char *argv[]) {
 		cursor_A=tmp_A;
 		cursor_B=tmp_B; 
 	} 
-	printf("\033[%d;%dH", screen_height-1, 0);
+	if (display) {
+		printf("\033[%d;%dH", screen_height-1, 0);
+	}
 	if (display) {
 		switch (outcome) {
 			case 100: { printf("Tie\n"); } break;
