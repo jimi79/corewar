@@ -26,7 +26,6 @@ random_adr=100 # max random address (neg/pos/2)
 max_src_size=100
 number_fights=1
 max_red=30
-number_generation=100000
 path_dna='/tmp/dna/'
 
 
@@ -127,7 +126,7 @@ def main(path):
 		files=get_list(path, 'cw') 
 	scores=[0 for i in files]
 
-	for generation in range(0,number_generation): # number of fights
+	while True:
 		print("mutation ",end="",flush=True)
 
 		files2=copy.copy(files)
@@ -162,7 +161,7 @@ def main(path):
 					inc=0
 					base=new_filename
 					while os.path.isfile(new_filename):
-						new_filename="%d_%s" % (inc, base)
+						new_filename=os.path.join(path, "%s_%s_%d.cw" % (random_name(), time.strftime("%H_%M", time.gmtime()),inc))
 						inc+=1
 					f=open(new_filename,"w")
 					for line in src:
