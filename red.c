@@ -6,7 +6,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define size_core 4096
+#define size_core 1024
 #define max_size_src 1024
 
 // structure of source : 
@@ -647,6 +647,5 @@ int main(int argc, char *argv[]) {
 		}
 		if (dotwritten) { printf("\n"); }
 	} 
-	printf("outcome = %d\n", outcome);
 	return outcome; 
 }

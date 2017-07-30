@@ -23,7 +23,8 @@ import time
 dup_max_size=0.1 # percentage of code duplicated (min=1 line)
 random_adr=100 # max random address (neg/pos/2)
 max_src_size=100
-match_count=50
+match_count=10
+max_red=10
 
 def get_list(path, ext):
 	return glob.glob('%s/*.%s' % (path, ext))
@@ -67,7 +68,7 @@ def mutate_delete(src):
 		pos=random.randrange(0, len(src) + 1)
 		src[a:b]=[]
 
-def championship(files_):
+def championship(scores,files_):
 	for i in range(0, len(files_)-1):
 		a=files_[i]
 		for j in range(i+1, len(files_)):
@@ -83,10 +84,11 @@ def championship(files_):
 				if res==102:
 					score_A-=1
 					score_B+=1
-				print("%s versus %s -> %d" % (a,b,res))
+				print("%s:%0.2f %s:%0.2f" % (a, score_A, b, score_B))
 			score_A=score_A / match_count
 			score_B=score_B / match_count 
-			print("%s:%f %s:%f" % (a,score_A, b, score_B))
+			scores[i]+=score_A
+			scores[j]+=score_B
 
 # generate the list of genomes available in the dir (dir = 'dna')
 def generate_empty_file(path,filename): 
@@ -154,9 +156,27 @@ def main(path):
 
 		files_championship=get_list(path, 'red') 
 		scores=[0 for i in files]
-		championship(files_championship)
+		championship(scores, files_championship) 
+
+		print(files_championship)
+		print(scores) 
+
+# remove the worst as long as more than x files
+
+		while len(files) > 10:
+			val,idx=min(enumerate(values), key=operator.itemgetter(1))
+			f=files[idx]
+			base = os.path.splitext(f)[0]
+			f2=os.rename(thisFile, base + ".cw")
+			os.remove(f)
+			os.remove(f2)
+			print("delete %s %s" % (f, f2))
+			scores.pop(idx)
+			files.pop(idx) 
 
 		files=get_list(path, 'cw')
+
+
 # then we compile everything (a function)
 # and championship (a function that feed scores)
 # then we remove if more than xx (10)
