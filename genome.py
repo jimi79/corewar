@@ -19,12 +19,15 @@ import lib_rcompil
 import shlex
 from subprocess import Popen, PIPE
 import time
+import operator
 
 dup_max_size=0.1 # percentage of code duplicated (min=1 line)
 random_adr=100 # max random address (neg/pos/2)
 max_src_size=100
-match_count=10
+number_fights=5
 max_red=10
+number_generation=1000
+path_dna='/tmp/dna/'
 
 def get_list(path, ext):
 	return glob.glob('%s/*.%s' % (path, ext))
@@ -76,7 +79,7 @@ def championship(scores,files_):
 			score_A=0
 			score_B=0
 # we got a fight here
-			for x in range(0,match_count):
+			for x in range(0,number_fights):
 				res=run("bin/red srcA=%s srcB=%s" % (a,b))
 				if res==101:
 					score_A+=1
@@ -84,9 +87,8 @@ def championship(scores,files_):
 				if res==102:
 					score_A-=1
 					score_B+=1
-				print("%s:%0.2f %s:%0.2f" % (a, score_A, b, score_B))
-			score_A=score_A / match_count
-			score_B=score_B / match_count 
+			score_A=score_A / number_fights
+			score_B=score_B / number_fights 
 			scores[i]+=score_A
 			scores[j]+=score_B
 
@@ -115,18 +117,19 @@ def main(path):
 		files=get_list(path, 'cw') 
 	scores=[0 for i in files]
 
-	for i in range(0,1): # number of fights
+	for generation in range(0,number_generation): # number of fights
 		files2=copy.copy(files)
-		number_of_files_to_mutate=int(0.1*len(files2))
-		if (number_of_files_to_mutate) < 2:
-			number_of_files_to_mutate=len(files2)
-		print("%d files to mutate" % number_of_files_to_mutate)
+		number_of_files_to_mutate=0.1*len(files2)
+		number_of_files_to_mutate=int(number_of_files_to_mutate)
+		if (number_of_files_to_mutate < 2):
+			number_of_files_to_mutate=2
+		#print("%d files to mutate" % number_of_files_to_mutate)
 		files_to_mutate=[]
 		for i in range(0, number_of_files_to_mutate):
 			files_to_mutate.append(files2.pop(random.randrange(len(files2))))
 
 		for file_ in files_to_mutate:
-			print("Mutate %s" % file_)
+			#print("Mutate %s" % file_)
 			f=open(file_,"r")
 			src=f.read().splitlines() 
 			f.close() 
@@ -158,21 +161,18 @@ def main(path):
 		scores=[0 for i in files]
 		championship(scores, files_championship) 
 
-		print(files_championship)
-		print(scores) 
+		idx,val=max(enumerate(scores), key=operator.itemgetter(1))
+		print("best = %s at generation %d" % (files_championship[idx], generation))
 
-# remove the worst as long as more than x files
-
-		while len(files) > 10:
-			val,idx=min(enumerate(values), key=operator.itemgetter(1))
-			f=files[idx]
-			base = os.path.splitext(f)[0]
-			f2=os.rename(thisFile, base + ".cw")
+		while len(files_championship) > 10:
+			idx,val=min(enumerate(scores), key=operator.itemgetter(1))
+			f=files_championship[idx]
+			base=os.path.splitext(f)[0]
+			f2=base+".cw"
 			os.remove(f)
 			os.remove(f2)
-			print("delete %s %s" % (f, f2))
 			scores.pop(idx)
-			files.pop(idx) 
+			files_championship.pop(idx) 
 
 		files=get_list(path, 'cw')
 
@@ -187,4 +187,4 @@ def main(path):
 
 
 if __name__ == '__main__':
-	main('dna')
+	main(path_dna)
