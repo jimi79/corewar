@@ -1,3 +1,6 @@
+# vim: syntax=none nosmartindent:
+
+
 corewar with dna :
 
 dna is the source code
@@ -100,3 +103,18 @@ write a program that can mix 2 programs (later)
 
 
 
+
+
+--- genomes
+
+list files in dir
+if none, create 1 empty file and add it to the list
+
+pick 10% of all files. if none, all files are mutated
+all mutation create a bunch of new files
+
+for each file, fight 5 times versus all other files. for each, win=+10, lose=-10. tie=+0 
+score is a // list to the file list.
+
+if number of file >100, remove the ones with the lowest score.
+(meaning that before a championship, we have at best 110 files)

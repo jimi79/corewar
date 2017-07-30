@@ -1,4 +1,5 @@
 #include <sys/ioctl.h>
+#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -549,7 +550,11 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	srand(time(NULL));
+	struct timeval t1;
+	gettimeofday(&t1, NULL);
+	srand(t1.tv_usec * t1.tv_sec);
+
+	//srand(time(NULL)); // sucks, because i might run that program multiples times in one sec
 	cursor_A=rand() % size_core;
 	//cursor_A=98;
 	int left;
@@ -642,5 +647,6 @@ int main(int argc, char *argv[]) {
 		}
 		if (dotwritten) { printf("\n"); }
 	} 
+	printf("outcome = %d\n", outcome);
 	return outcome; 
 }
