@@ -28,8 +28,6 @@ number_fights=1
 max_red=100
 count_opponents=30 # number of opponents to fight against
 path_dna='/tmp/dna/'
-number_generation=1
-
 
 name_first=['c','d','p','l','m','r','s','t','z','f']
 name_second=['a','e','i','o','u']
@@ -89,13 +87,13 @@ def championship(scores,files_):
 	count=[0 for i in range(0,len(files_))]  # count of fights per player 
 	idx_all_opp=[i for i in range(0, len(files_))] # list of possible indexes for opponents 
 	for i in range(0, len(files_)): # index of the first guy 
-		#s="%0.0f%%" % (i/len(files_)*100) 
-		#print(s, end="", flush=True) 
+		s="%0.0f%%" % (i/len(files_)*100) 
+		print(s, end="", flush=True) 
 		idx_opp=copy.copy(idx_all_opp)
 		idx_opp.remove(i) 
 		random.shuffle(idx_opp)
 		idx_opp=idx_opp[0:count_opponents] 
-		print("opponents to fight against %s" % idx_opp)
+		#print("opponents to fight against %s" % idx_opp)
 		for j in idx_opp: 
 			a=files_[i]
 			b=files_[j]
@@ -108,15 +106,8 @@ def championship(scores,files_):
 				scores[j]-=1
 		count[i]+=1
 		count[j]+=1
-
-	print("scores %s" % scores)
-	print("count %s" % count)
-	scores=[scores[s]/count[s] for s in range(0, len(scores))]
-
-	print("scores avg %s" % scores)
-
-		#print("\033[%dD" % len(s), end="", flush=True)
-
+		print("\033[%dD" % len(s), end="", flush=True) 
+	scores=[scores[s]/count[s] for s in range(0, len(scores))] 
 
 # generate the list of genomes available in the dir (dir = 'dna')
 def generate_empty_file(path,filename): 
@@ -140,7 +131,7 @@ def main(path):
 		files=get_list(path, 'cw') 
 	scores=[0 for i in files]
 
-	for generation in range(0,number_generation): # number of fights
+	while True:
 		print("mutation ",end="",flush=True)
 
 		files2=copy.copy(files)
@@ -175,7 +166,7 @@ def main(path):
 					inc=0
 					base=new_filename
 					while os.path.isfile(new_filename):
-						new_filename="%d_%s" % (inc, base)
+						new_filename=os.path.join(path, "%s_%s_%d.cw" % (random_name(), time.strftime("%H_%M", time.gmtime()),inc))
 						inc+=1
 					f=open(new_filename,"w")
 					for line in src:
