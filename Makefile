@@ -1,6 +1,6 @@
 BIN=./bin
 SOURCE=./
-CFLAGS=-ggdb
+CFLAGS?=-ggdb
 LIBS=
 
 LIST=$(BIN)/red
@@ -13,3 +13,7 @@ all: $(LIST)
 $(BIN)/%: $(SOURCE)%.c
 	$(CC) $(INC) $< $(CFLAGS) -o $@ $(LIBS)
 
+clean:
+	rm -f $(LIST)
+
+re: clean all

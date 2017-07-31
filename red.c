@@ -8,6 +8,11 @@
 #include <time.h>
 #include <unistd.h>
 
+
+// here is the code :)
+
+
+// les define en MAJUSCULES c mieux :-)
 #define size_core 1024
 #define max_size_src 1024
 
@@ -123,12 +128,18 @@ int display_cell(int idx) {
 	printf("\033[0m"); 
 }
 
-int copy_cell(int from, int to) {
-	core[to % size_core].code.type =core[from % size_core].code.type;
-	core[to % size_core].code.mod_A=core[from % size_core].code.mod_A;
-	core[to % size_core].code.mod_B=core[from % size_core].code.mod_B;
-	core[to % size_core].code.adr_A=core[from % size_core].code.adr_A;
-	core[to % size_core].code.adr_B=core[from % size_core].code.adr_B;
+static inline int copy_cell(int from, int to) {
+	unsigned int to_offset = to % size_core;
+	unsigned int from_offset = from % size_core;
+
+  memcpy(&core[to_offset], &core[from_offset], sizeof(core[to_offset]));
+	/*
+	core[to_offset].code.type =core[from_offset].code.type;
+	core[to_offset].code.mod_A=core[from_offset].code.mod_A;
+	core[to_offset].code.mod_B=core[from_offset].code.mod_B;
+	core[to_offset].code.adr_A=core[from_offset].code.adr_A;
+	core[to_offset].code.adr_B=core[from_offset].code.adr_B;
+	*/
 	if (display) { display_cell(to); }
 }
 
@@ -148,7 +159,7 @@ int install_program(struct s_red_line src[max_size_src], int size, int to, int o
 int pause_locate(int cursor) {
 	locate_cell(cursor);
 	fflush(stdout);
-	if (debug_level) { getchar(); } else {
+	if (debug_level>1) { getchar(); } else {
 		if (display) { usleep(display * 1000); }
 	}
 } 
@@ -277,10 +288,13 @@ int execute(int idx, int owner) {
 	struct s_red_line r;
 
 	char short_name=' ';
+	/*
 	switch (owner) {
 		case 1: { short_name='A'; } break;
 		case 2: { short_name='B'; } break;
 	} 
+	*/
+	short_name = 'A' + (owner - 1);
 
 
 	int A, B; // temp values
@@ -598,7 +612,7 @@ int main(int argc, char *argv[]) {
 		install_program(src_B, size_B, cursor_B, 2);
 	}
 
-	if (debug_level) {
+	if (debug_level>1) {
 		printf("Starting program A at %d\n", cursor_A);
 		printf("Starting program B at %d\n", cursor_B);
 		getchar();
@@ -649,7 +663,7 @@ int main(int argc, char *argv[]) {
 			case 102: { printf("B win\n"); } break;
 		}
 	} 
-	if (debug_level>5) {
+	if (debug_level) {
 		int dotwritten=0;
 		printf("\n------core dump -----\n");
 		i=0;

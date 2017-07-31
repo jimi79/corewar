@@ -24,7 +24,13 @@ import operator
 
 verbose=1
 dup_max_size=0.1 # percentage of code duplicated (min=1 line)
+
 max_src_size=300
+#--fights
+number_of_rounds=5 # 5 fights per meeting
+number_of_fights_per_guy=0.5 # NUMber of fights per guy
+
+
 random_adr=max_src_size
 max_red=500
 path_dna='/tmp/dna/'
@@ -94,27 +100,28 @@ def championship(scores,files_):
 		idx_opp=copy.copy(idx_all_opp)
 		idx_opp.remove(i) 
 		random.shuffle(idx_opp)
-		number_of_fights=int(0.1*len(idx_all_opp))
+		number_of_fights=int(number_of_fights_per_guy*len(idx_all_opp))
 		if number_of_fights<1:
 			number_of_fights=1
 		idx_opp=idx_opp[0:number_of_fights] 
 		for j in idx_opp: 
-			a=files_[i]
-			b=files_[j]
-			res=run("bin/red --srcA %s --srcB %s" % (a,b))
-			if (verbose==2):
-				print("fight %s versus %s score %d" % (a,b,res))
-			if (not (res in [100,101,102])):
-				raise Exception("Value incorrect for fight between %s and %s : %d" % (a,b,res))
-			if res==101:
-				scores[i]+=1
-				scores[j]-=1
-			if res==102:
-				scores[i]-=1
-				scores[j]+=1
-			if res!=100:
-				count[i]+=1
-				count[j]+=1
+			for x in range(0, number_of_rounds):
+				a=files_[i]
+				b=files_[j]
+				res=run("bin/red --srcA %s --srcB %s" % (a,b))
+				if (verbose==2):
+					print("fight %s versus %s score %d" % (a,b,res))
+				if (not (res in [100,101,102])):
+					raise Exception("Value incorrect for fight between %s and %s : %d" % (a,b,res))
+				if res==101:
+					scores[i]+=1
+					scores[j]-=1
+				if res==102:
+					scores[i]-=1
+					scores[j]+=1
+				if res!=100:
+					count[i]+=1
+					count[j]+=1
 		if (verbose==1):
 			print("\033[%dD" % len(s), end="", flush=True) 
 	#scores=[scores[s]/count[s] for s in range(0, len(scores))]  # by doing that, i lose the pointer, meaning that the caller see the old array

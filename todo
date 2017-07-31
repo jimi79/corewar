@@ -118,3 +118,20 @@ score is a // list to the file list.
 
 if number of file >100, remove the ones with the lowest score.
 (meaning that before a championship, we have at best 110 files)
+
+
+
+
+https://docs.python.org/2/library/ctypes.html <- call C from python.
+
+
+
+
+maybe adding an option to c code, to randomly modify code (duplicate / mutate) till it mostly win. 
+or have another binary for that.
+mmh
+because basically, i could just have two guys fighting, and if one mostly lose, we randomly modify it till it wins, then we do the same with the other one.
+
+Or, having another C program, that is like : i create two programs, empty. both lose. i take the first, and tweak it, till it win at least 75% of fights. If so, i do the same for the other one.
+
+
