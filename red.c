@@ -1,8 +1,10 @@
-#include <sys/ioctl.h>
-#include <sys/time.h>
+#include <execinfo.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -69,6 +71,22 @@ int screen_height;
 //	}
 //}
 
+
+void handler_sigsegv(int sig) {
+	void *array[10];
+	size_t size;
+
+	// get void*'s for all entries on the stack
+	size = backtrace(array, 10);
+
+	// print out all the frames to stderr
+	fprintf(stderr, "Error: signal %d:\n", sig);
+	backtrace_symbols_fd(array, size, STDERR_FILENO);
+	exit(1);
+}
+
+
+
 int print_short_type(struct s_red_line *s) {
 	switch (s->type) {
 		case -1 : { printf(" "); } break; // cannot happen, default value in mem is DAT #0,#0
@@ -129,10 +147,10 @@ int install_program(struct s_red_line src[max_size_src], int size, int to, int o
 }
 int pause_locate(int cursor) {
 	locate_cell(cursor);
-	if (debug_level>9) { getchar(); } else {
+	fflush(stdout);
+	if (debug_level) { getchar(); } else {
 		if (display) { usleep(display * 1000); }
 	}
-	fflush(stdout);
 } 
 
 int print_red_line(struct s_red_line *s) {
@@ -159,7 +177,6 @@ int print_red_line(struct s_red_line *s) {
 		case 1 : { mod_B=' '; } break;
 		case 2 : { mod_B='@'; } break;
 	}	
-
 	printf("%s %c%d, %c%d", type, mod_A, s->adr_A, mod_B, s->adr_B);
 }
 
@@ -167,43 +184,42 @@ int parse_parameters(int argc, char *argv[]) { // use ->truc instead of &val.tru
 	short i; 
 	short mandatory=2;
 	for(i=1; i < argc; i++) {
-		char *ptr=strchr(argv[i], '=');
-		if (ptr) {
-			int index=ptr - argv[i];
-			char code[index];
-			memcpy(code, &argv[i][0], index);
-			code[index]='\0'; 
-			char value[strlen(argv[i]) - index];
-			memcpy(value, &argv[i][index + 1], strlen(argv[i]) - index);
-			int ok=0;
-			if (!strcmp(code, "srcA")) { 
-				memcpy(file_A, value, strlen(value));
-				mandatory--;
-			}
-			if (!strcmp(code, "srcB")) {
-				memcpy(file_B, value, strlen(value));
-				mandatory--;
-			} 
-			if (!strcmp(code, "debug")) {
-				debug_level=(short)strtol(value, NULL, 10); 
-				if (debug_level>0) { display=1; }
-			} 
-			if (!strcmp(code, "display")) { 
-				display=(short)strtol(value, NULL, 10); 
-			} 
-			//if (!strcmp(code, "log")) { 
-			//	memcpy(log_filename, value, strlen(value));
-			//	log_enabled=1;
-			//} 
-			
-		} else
-		{
-			fprintf(stderr, "Error: all parameters should be code=value. '%s' isn't\n", argv[i]);
+		int ok=0;
+		if (!strcmp(argv[i], "--srcA")) { 
+			i++;
+			memcpy(file_A, argv[i], strlen(argv[i]));
+			mandatory--;
+			ok=1;
+		}
+		if (!strcmp(argv[i], "--srcB")) {
+			i++;
+			memcpy(file_B, argv[i], strlen(argv[i]));
+			mandatory--;
+			ok=1;
+		} 
+		if (!strcmp(argv[i], "--debug")) {
+			i++;
+			debug_level=(short)strtol(argv[i], NULL, 10); 
+			if (debug_level>0) { display=1; }
+			ok=1;
+		} 
+		if (!strcmp(argv[i], "--display")) { 
+			i++;
+			display=(short)strtol(argv[i], NULL, 10); 
+			ok=1;
+		} 
+		//if (!strcmp(code, "log")) { 
+		//	memcpy(log_filename, value, strlen(value));
+		//	log_enabled=1;
+		//} 
+		if (!ok) {
+			fprintf(stderr, "error, parameter %s unknown\n", argv[i]);
 			return 0;
-		};
+		}
+		
 	}; 
 	if (mandatory > 0) {
-		fprintf(stderr, "Error, one parameter is missing. Mandatory parameters are srcA and srcB.\n");
+		fprintf(stderr, "error, one parameter is missing. Mandatory parameters are srcA and srcB\n");
 		return 0;
 	}
 	return 1;
@@ -273,12 +289,13 @@ int execute(int idx, int owner) {
 	int err=0; 
 	int jump=0; // if 1, then we don't increment cursor location
 
+	r=core[idx].code;
+
 	if (debug_level) { 
 		locate_log(-1);
 		print_red_line(&r);
 	}
 
-	r=core[idx].code;
 	// return -1 if the guy lose
 	if ((r.type<1) || (r.type>7)) {
 		if (debug_level) {
@@ -436,21 +453,23 @@ int execute(int idx, int owner) {
 					B=adr(idx+core[B].code.adr_B);
 				} break;
 			} 
-			A=adr(idx+A);
-			core[A].code.adr_B-=1;
-			A=core[A].code.adr_B;
-			if (A==0) {
-				if (debug_level) {
-					locate_log(0);
-					printf("program %c, jumping because %d == 0, to %d (%d)", short_name, A, adr(B-idx), B);
-				}
-				jump=1;
-				idx=B;
-			} 
-			else {
-				if (debug_level) {
-					locate_log(0);
-					printf("program %c, NOT jumping because %d != 0", short_name, A);
+			if (!err) {
+				A=adr(idx+A);
+				core[A].code.adr_B-=1;
+				A=core[A].code.adr_B;
+				if (A==0) {
+					if (debug_level) {
+						locate_log(0);
+						printf("program %c, jumping because %d == 0, to %d (%d)", short_name, A, adr(B-idx), B);
+					}
+					jump=1;
+					idx=B;
+				} 
+				else {
+					if (debug_level) {
+						locate_log(0);
+						printf("program %c, NOT jumping because %d != 0", short_name, A);
+					}
 				}
 			}
 		} break; 
@@ -501,8 +520,7 @@ int execute(int idx, int owner) {
 		idx=-1;
 		if (debug_level) {
 			locate_log(0);
-			printf("program %c, error : ", short_name);
-			print_red_line(&r);
+			printf("Syntax error");
 		}
 	}
 	else {
@@ -520,6 +538,9 @@ int get_term_size() {
 }
 
 int main(int argc, char *argv[]) {
+
+	signal(SIGSEGV, handler_sigsegv);   // install our handler
+
 	if (!parse_parameters(argc, argv)) {
 		return 1;
 	} 
@@ -556,7 +577,6 @@ int main(int argc, char *argv[]) {
 
 	//srand(time(NULL)); // sucks, because i might run that program multiples times in one sec
 	cursor_A=rand() % size_core;
-	//cursor_A=98;
 	int left;
 	left=size_core - size_A - size_B;
 	cursor_B=rand() % left;
@@ -576,6 +596,12 @@ int main(int argc, char *argv[]) {
 	}
 	for (i=0; i < size_B; i++) {
 		install_program(src_B, size_B, cursor_B, 2);
+	}
+
+	if (debug_level) {
+		printf("Starting program A at %d\n", cursor_A);
+		printf("Starting program B at %d\n", cursor_B);
+		getchar();
 	}
 	
 	if (display) {
@@ -650,5 +676,9 @@ int main(int argc, char *argv[]) {
 		}
 		if (dotwritten) { printf("\n"); }
 	} 
+	// output start location to find why i segfault from time to time
+	// do that with a debug level
+	// if debug_level >=1, display starting pos. debug > x makes request of presskey each time. actually maybe 1 anyway.
+	// have a list of all debug level needed, and sort them
 	return outcome; 
 }
