@@ -190,11 +190,13 @@ def main(path):
 		#print(" ", end="", flush=True) # championship displays some dots for each player
     # not anymore
 
-		idx,val=max(enumerate(scores), key=operator.itemgetter(1))
-		best_name=files_championship[idx]
-		best_name=os.path.splitext(best_name)[0]+".cw"
-		print("best %s" % (os.path.basename(best_name)))
-		print(''.join(open(best_name, "r").readlines()))
+		idx_b,val_b=max(enumerate(scores), key=operator.itemgetter(1))
+		idx_w,val_w=min(enumerate(scores), key=operator.itemgetter(1))
+		best_name=os.path.basename(os.path.splitext(files_championship[idx_b])[0])
+		best_filename=os.path.splitext(files_championship[idx_b])[0]+'.cw'
+		worst_name=os.path.basename(os.path.splitext(files_championship[idx_w])[0])
+		print("best %s (%d), worst %s (%d)" % (best_name, val_b, worst_name, val_w)) 
+		print(''.join(open(best_filename, "r").readlines()[0:10]))
 
 		remove=0
 		while len(files_championship) > max_red:

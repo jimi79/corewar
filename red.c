@@ -594,19 +594,22 @@ int main(int argc, char *argv[]) {
 
 		tmp_A=execute(cursor_A, 1); // if -1, then lose
 		if (display) { pause_locate(cursor_A); };
+		tmp_B=execute(cursor_B, 2); // if -1, then lose
+		if (display) { pause_locate(cursor_B); };
+
+		if ((tmp_A==-1) && (tmp_B==-1)) {
+			outcome=100;
+			break;
+		} // tie if both lose
+
 		if (tmp_A==-1) {
 			outcome=102;
 			break;
-		}
-
-		if (outcome==100) {
-			tmp_B=execute(cursor_B, 2); // if -1, then lose
-			if (display) { pause_locate(cursor_B); };
-			if (tmp_B==-1) {
-				outcome=101;
-				break;
-			} 
-		}
+		} 
+		if (tmp_B==-1) {
+			outcome=101;
+			break;
+		} 
 		cursor_A=tmp_A;
 		cursor_B=tmp_B; 
 	} 
