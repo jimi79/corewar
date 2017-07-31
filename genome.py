@@ -22,12 +22,13 @@ import time
 import operator
 
 dup_max_size=0.1 # percentage of code duplicated (min=1 line)
-random_adr=100 # max random address (neg/pos/2)
-max_src_size=100
+max_src_size=300
+random_adr=max_src_size
 number_fights=1
-max_red=30
-number_generation=100000
+max_red=100
+count_opponents=30 # number of opponents to fight against
 path_dna='/tmp/dna/'
+number_generation=1
 
 
 name_first=['c','d','p','l','m','r','s','t','z','f']
@@ -81,29 +82,41 @@ def mutate_delete(src):
 		pos=random.randrange(0, len(src) + 1)
 		src[a:b]=[]
 
+
 def championship(scores,files_):
-	for i in range(0, len(files_)-1):
-		s="%0.0f%%" % (i/len(files_)*100) 
-		print(s, end="", flush=True)
-		a=files_[i]
-		for j in range(i+1, len(files_)):
+# i want for each files_ to fight against a numer of ennemies
+# i need to count for each the number of fights, because some will fight more than others
+	count=[0 for i in range(0,len(files_))]  # count of fights per player 
+	idx_all_opp=[i for i in range(0, len(files_))] # list of possible indexes for opponents 
+	for i in range(0, len(files_)): # index of the first guy 
+		#s="%0.0f%%" % (i/len(files_)*100) 
+		#print(s, end="", flush=True) 
+		idx_opp=copy.copy(idx_all_opp)
+		idx_opp.remove(i) 
+		random.shuffle(idx_opp)
+		idx_opp=idx_opp[0:count_opponents] 
+		print("opponents to fight against %s" % idx_opp)
+		for j in idx_opp: 
+			a=files_[i]
 			b=files_[j]
-			score_A=0
-			score_B=0
-# we got a fight here
-			for x in range(0,number_fights):
-				res=run("bin/red srcA=%s srcB=%s" % (a,b))
-				if res==101:
-					score_A+=1
-					score_B-=1
-				if res==102:
-					score_A-=1
-					score_B+=1
-			score_A=score_A / number_fights
-			score_B=score_B / number_fights 
-			scores[i]+=score_A
-			scores[j]+=score_B 
-		print("\033[%dD" % len(s), end="", flush=True)
+			res=run("bin/red srcA=%s srcB=%s" % (a,b))
+			if res==101:
+				scores[i]+=1
+				scores[j]-=1
+			if res==102:
+				scores[i]+=1
+				scores[j]-=1
+		count[i]+=1
+		count[j]+=1
+
+	print("scores %s" % scores)
+	print("count %s" % count)
+	scores=[scores[s]/count[s] for s in range(0, len(scores))]
+
+	print("scores avg %s" % scores)
+
+		#print("\033[%dD" % len(s), end="", flush=True)
+
 
 # generate the list of genomes available in the dir (dir = 'dna')
 def generate_empty_file(path,filename): 
