@@ -17,11 +17,20 @@ int get_term_size() {
 	screen_height=w.ws_row;
 }
 
-int print_red_line(struct s_red_line s) {
+int init_line(struct s_red_line* line, int type, int mod_A, int mod_B, int adr_A, int adr_B) {
+	line->type=type;
+	line->mod_A=mod_A;
+	line->mod_B=mod_B;
+	line->adr_A=adr_A;
+	line->adr_B=adr_B;
+}
+
+int print_red_line(struct s_red_line* s) {
+	//printf("%d %d %d %d %d\n", s->type, s->mod_A, s->mod_B, s->adr_A, s->adr_B); // only to debug
 	char type[4]; // instruction
 	char mod_A; // type of address for A
 	char mod_B; 
-	switch (s.type) {
+	switch (s->type) {
 		case 0 : { strcpy(type,"DAT"); } break;
 		case 1 : { strcpy(type,"MOV"); } break;
 		case 2 : { strcpy(type,"ADD"); } break;
@@ -31,21 +40,21 @@ int print_red_line(struct s_red_line s) {
 		case 6 : { strcpy(type,"DJZ"); } break;
 		case 7 : { strcpy(type,"CMP"); } break;
 	}
-	switch (s.mod_A) {
+	switch (s->mod_A) {
 		case 0 : { mod_A='#'; } break;
 		case 1 : { mod_A=' '; } break;
 		case 2 : { mod_A='@'; } break;
 	}
-	switch (s.mod_B) {
+	switch (s->mod_B) {
 		case 0 : { mod_B='#'; } break;
 		case 1 : { mod_B=' '; } break;
 		case 2 : { mod_B='@'; } break;
 	}	
-	printf("%s %c%d, %c%d", type, mod_A, s.adr_A, mod_B, s.adr_B);
+	printf("%s %c%d, %c%d", type, mod_A, s->adr_A, mod_B, s->adr_B);
 }
 
-int print_short_type(struct s_red_line s) {
-	switch (s.type) {
+int print_short_type(struct s_red_line* s) {
+	switch (s->type) {
 		case -1 : { printf(" "); } break; // cannot happen, default value in mem is DAT #0,#0
 		case 0  : { printf("."); } break;
 		case 1  : { printf("M"); } break;
@@ -80,7 +89,7 @@ int display_cell(int idx) {
 	if (owner==1) { bgcolor=41; }
 	if (owner==2) { bgcolor=44; }
 	printf("\033[%um", bgcolor); 
-	print_short_type(core[idx].code);
+	print_short_type(&core[idx].code);
 	printf("\033[0m"); 
 }
 
@@ -128,9 +137,7 @@ int compare_two_cells(int a, int b) {
 					(core[a].code.adr_B==core[b].code.adr_B));
 }
 
-
-
-int read_prog(char filename[MAX_SIZE_SRC], struct s_program* prog) {
+int load_prog(char filename[MAX_SIZE_SRC], struct s_program* prog) {
 	FILE* in=NULL;
 	if ((in=fopen(filename, "rb")) == NULL) {
 		fprintf(stderr, "Error while opening %s\n", filename);
@@ -156,16 +163,16 @@ int read_prog(char filename[MAX_SIZE_SRC], struct s_program* prog) {
 	return i;
 }
 
-int install_program(struct s_program prog, int to, int owner) {
+int install_program(struct s_program* prog, int to, int owner) {
 	int i;
 	int dest;
-	for (i=0; i < prog.size; i++) { 
+	for (i=0; i < prog->size; i++) { 
 		dest=(to + i) % SIZE_CORE;
-		core[dest].code.type =prog.lines[i].type;
-		core[dest].code.mod_A=prog.lines[i].mod_A; 
-		core[dest].code.mod_B=prog.lines[i].mod_B; 
-		core[dest].code.adr_A=prog.lines[i].adr_A; 
-		core[dest].code.adr_B=prog.lines[i].adr_B; 
+		core[dest].code.type =prog->lines[i].type;
+		core[dest].code.mod_A=prog->lines[i].mod_A; 
+		core[dest].code.mod_B=prog->lines[i].mod_B; 
+		core[dest].code.adr_A=prog->lines[i].adr_A; 
+		core[dest].code.adr_B=prog->lines[i].adr_B; 
 		core[dest].owner=owner;
 	}
 } 
@@ -201,7 +208,7 @@ int execute(int idx, int owner) {
 
 	if (debug_level) { 
 		locate_log(-1);
-		print_red_line(r);
+		print_red_line(&r);
 	}
 
 	// return -1 if the guy lose
@@ -449,7 +456,7 @@ int display_core_dump() {
 		else { 
 			if (repetition > 0) { printf("< %d times>\n", repetition); repetition=0; }
 			if (i < SIZE_CORE) { 
-				print_red_line(core[i].code);
+				print_red_line(&core[i].code);
 				if (i==cursor_A) {
 					 printf(" <--- cursor A");
 				};
@@ -506,8 +513,9 @@ int run_fight() {
 	return outcome;
 }
 
-int print_listing(struct s_program prog) {
-	for (int i=0;i<prog.size;i++) {
-		print_red_line(prog.lines[i]);
+int print_listing(struct s_program* prog) {
+	printf("listing %d lines\n", prog->size);
+	for (int i=0;i<prog->size;i++) {
+		print_red_line(&prog->lines[i]);
 	}
 }

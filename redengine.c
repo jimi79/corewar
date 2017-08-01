@@ -74,14 +74,14 @@ int main(int argc, char *argv[]) {
 	} 
 	get_term_size(); 
 	int size;
-	size=read_prog(filename_prog_A, &prog_A);
+	size=load_prog(filename_prog_A, &prog_A);
 	if (!size) { return 0; } 
-	size=read_prog(filename_prog_B, &prog_B); // prog_B will have to be allocated in the function 
+	size=load_prog(filename_prog_B, &prog_B); // prog_B will have to be allocated in the function 
 	if (!size) { return 0; }
 
 	if (debug_level > 1) {
-		print_listing(prog_A);
-		print_listing(prog_B);
+		print_listing(&prog_A);
+		print_listing(&prog_B);
 		getchar();
 	} 
 
@@ -106,8 +106,8 @@ int main(int argc, char *argv[]) {
 	if (cursor_B > (cursor_A - prog_B.size)) {
 		cursor_B=cursor_B + prog_A.size + prog_B.size;
 	}
-	install_program(prog_A, cursor_A, 1);
-	install_program(prog_B, cursor_B, 2);
+	install_program(&prog_A, cursor_A, 1);
+	install_program(&prog_B, cursor_B, 2);
 	
 	int outcome;
 	outcome=run_fight();

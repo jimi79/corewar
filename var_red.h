@@ -1,4 +1,4 @@
-#define SIZE_CORE 1024
+#define SIZE_CORE 4096
 #define MAX_SIZE_SRC 1024
 
 struct s_red_line {
