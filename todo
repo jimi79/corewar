@@ -139,3 +139,62 @@ Or, having another C program, that is like : i create two programs, empty. both 
 
 
 run : no install, no init, just run
+
+
+
+f g h i j k
+0 1 2 3 4 5
+pos is random from 0 to 6, meaning random of 7
+insert a b c 
+random is 4, so i insert before 4
+
+so: 
+for last to 4
+5 -> 8
+4 -> 7
+a -> 4
+b -> 5
+c -> 6
+
+if random is 0
+for last to 0
+5->8
+4->7
+0->3
+a->0
+b->1
+c->2
+
+if random is 7
+since 7 > len; no move
+a->7
+b->8
+c->9
+
+
+
+
+
+
+a b c d e f g 
+0 2 3 4 5 6 7
+
+a=5 
+b=2
+pos= random 8 - 3 +1
+pos=3
+
+size=3
+a=2 b=5
+pos > a -> pos=6
+
+program size=8+3=11
+
+i=6. 
+
+
+
+1 2 3 4 5 6
+		5 6
+3 5
+

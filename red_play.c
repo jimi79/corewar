@@ -19,12 +19,13 @@
 #include <unistd.h>
 #include "lib_red.h"
 
+int verbose=1; // debugging
 
-int mutate_change(struct s_program* program) {
+int mutate_change(struct s_program* program, int force_append, int big_mutate) { // 1 force append
 	int idx;
-	if (program->size==0) {
-		program->size=1;
-		idx=0; 
+	if ((force_append) || (program->size==0)) {
+		program->size++;
+		idx=program->size-1; 
 		init_line(&program->lines[idx], 0, 0, 0, 0, 0);
 	} else { idx=rand() % program->size; }
 
@@ -55,18 +56,142 @@ int mutate_change(struct s_program* program) {
 	} 
 	int b; 
 	b=*pfield;
-	*pfield=random() % 10 - 5 + *pfield; 
+	int r=10; // range of change
+	if (big_mutate) { r=1000; }
+	*pfield=random() % r - 5 + *pfield; 
 	while (*pfield < 0) { *pfield=*pfield+max_val; }
 	*pfield=*pfield % max_val; 
+	return idx;
+}
+
+int mutate_duplicate_location(struct s_program* program, int a, int b, int pos) {
+	// we pick a and b (intervert if needed)
+	// then we insert, by moving one from x steps to the end. discard lines if outside max
+	
+	if (verbose) { printf("a=%d b=%d\n", a, b); }
+	int size=b-a; // we don't pick line b actually
+	if (verbose) { printf("size=%d, prog size=%d\n", size, program->size); }
+	
+	int shifted=0; // the source we copy is before
+	if ((pos<b) && (pos>a)) { pos=pos+size; } // we have to insert not in the middle of what we copy
+	if (pos<a) { shifted=1; }
+		// if shifted, the source is after what we copy, so we read from the new location of it
+	int i; 
+	if (verbose) { printf("duplicating from %d to %d before pos %d\n", a, b, pos);  }
+	int src,dst;
+	program->size=program->size+size;
+	if (program->size > MAX_SIZE_SRC) {
+		program->size = MAX_SIZE_SRC; }
+	if (pos<program->size) {
+		for (i=program->size-1; i>=pos+size; i--) {
+			if (i < MAX_SIZE_SRC) {
+				src=i-size;
+				dst=i;
+				if (verbose) { printf("moving line %d to %d\n", src, dst); }
+				copy_line(program, i-size, i); 
+			}
+		}
+	}
+	if (verbose) { printf("shifted=%d\n", shifted); }
+	for (i=0; i<size; i++) {
+		src=i+a+shifted*size;
+		dst=i+pos;
+		if ((dst < MAX_SIZE_SRC) && (src < MAX_SIZE_SRC)) {
+			if (verbose) { printf("and moving line %d to %d\n", src, dst); }
+			copy_line(program, src, dst);
+		}
+	}
+}
+
+int mutate_duplicate(struct s_program* program) {
+	int a=random() % (program->size);
+	int b=random() % program->size + 1; // b excluded from copy
+	if (b<a) {
+		int c; c=a; a=b; b=c; }
+	if (b==a) {
+		b=a+1; } // a can't be at the end anyway, so i can add 1 to it 
+	int size=b-a; // we don't pick line b actually
+	int pos=(random() % (program->size-size)) + 1; // we insert before that index
+	return mutate_duplicate_location(program, a, b, pos);
+}
+
+int mutate_remove(struct s_program* program) {
+	int a=random() % program->size;
+	int b=random() % program->size + 1; // b excluded from copy
+	if (b<a) {
+		int c; c=a; a=b; b=c; }
+	if (b==a) {
+		b=a+1; } // a can't be at the end anyway, so i can add 1 to it 
+	
+	if (verbose) { printf("a=%d b=%d\n", a, b); }
+
+	int size=b-a;
+	int src, dst;
+	if (verbose) { printf("removing from %d to %d\n", a, b); }
+	int end=size;
+	if (end > program->size-b) { end=program->size-b; }
+	for (int i=0;i<end; i++) {
+		dst=i+a;
+		src=i+a+size;
+		if (verbose) { printf("moving %d -> %d\n", src, dst); }
+		copy_line(program, src, dst);
+	}
+	program->size=program->size-size;
+
 }
 
 int test(struct s_program* program) {
-	for (int i=0; i<10;i++) {
-		printf("%dth mutation\n", i);
-		mutate_change(program);
-		print_listing(program);
-		printf("\n");
+	printf("---- mutate_change force append ----\n");
+	int i, a;
+	for (i=0; i<10;i++) { // x lines to have a proper listing
+		a=mutate_change(program, 1, 0);
 	}
+	printf("---- mutate_change no force append ----\n");
+	for (i=0; i<100;i++) {
+		a=mutate_change(program, 0, 1);
+	} 
+	print_listing(program);
+	printf("---- mutate_duplicate ----\n");
+	mutate_duplicate_location(program, 0, 5, 1);
+	print_listing(program);
+	printf("---- mutate_duplicate ----\n");
+	mutate_duplicate_location(program, 3, 5, 7);
+	print_listing(program);
+	printf("---- mutate_duplicate ----\n");
+	mutate_duplicate_location(program, 3, 5, 3);
+	print_listing(program);
+	printf("---- mutate_duplicate ----\n");
+	mutate_duplicate_location(program, 0, 2, program->size);
+	print_listing(program);
+	printf("---- mutate_duplicate ----\n");
+	mutate_duplicate_location(program, 0, 4, 0);
+	print_listing(program);
+
+	verbose=0;
+	for (i=0;i<100;i++) {
+		printf("---- mutate_duplicate ----\n");
+		mutate_duplicate(program);
+	}
+	print_listing(program); 
+	printf("---- mutate_change ----\n");
+	for (i=0; i<1000;i++) {
+		a=mutate_change(program, 0, 1);
+	} 
+	verbose=1;
+	print_listing(program);
+	mutate_remove(program);
+	print_listing(program);
+
+
+	// one line program to test removing
+	struct s_program test;
+	print_listing(&test);
+	a=mutate_change(&test, 1, 1);
+	print_listing(&test);
+	mutate_remove(&test);
+	print_listing(&test);
+
+
 }
 
 int main(int argc, char *argv[]) {
@@ -81,24 +206,25 @@ int main(int argc, char *argv[]) {
 	// we initialize both programs empty
 
 	programs[0].size=0; 
+	load_prog("bin/dwarf.cw", &program[1]);
+	programs[1].size=0; 
 
-	test(&programs[0]);
+	int ev=0; // index of the thing to evolve
 
-	// then we mutate_change the first one 3 times
-	// then we mutate_change the second one 6 times
-	// then we mutate_duplicate
-	// then we mutate_remove
-	// and each time we check that is going allright
+	
 
+	//run_fight(); // arg, parameters, cursor and everything. godamnit
+	// either i use an object, either i keep that global.
+	// i need a fucking object to store all of that.
+	// or give pointers. yeah :
+	// pointer to code
+	// pointer to cursor_A
+	// pointer to cursor_B
+	// pointer to fighter_A (a program)
+	// pointer to fighter_B (a program)
 
-
-// TODO 
-/*
-
-mutate change = pick a random field, change its value by 1 to 5, modulo the max value (7 for type, 3 for address type, mem_size for address)
-
-
-// i also need to save a program, at some point (write that in lib */
+	
+	
 }
 
 

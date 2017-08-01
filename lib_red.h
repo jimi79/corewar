@@ -2,6 +2,7 @@
 
 int adr(int val);
 int copy_cell(int from, int to);
+int copy_line(struct s_program* program, int a, int b);
 int display_cell(int idx);
 int display_core_dump();
 int display_full_core();

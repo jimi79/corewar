@@ -113,6 +113,16 @@ int copy_cell(int from, int to) {
 	core[to_offset].code.adr_B=core[from_offset].code.adr_B;
 	*/
 	if (display) { display_cell(to); }
+	return 1;
+}
+
+int copy_line(struct s_program* program, int a, int b) {
+	program->lines[b].type=program->lines[a].type;
+	program->lines[b].mod_A=program->lines[a].mod_A;
+	program->lines[b].mod_B=program->lines[a].mod_B;
+	program->lines[b].adr_A=program->lines[a].adr_A;
+	program->lines[b].adr_B=program->lines[a].adr_B;
+	return 1;
 }
 
 int pause_locate(int cursor) {
@@ -516,6 +526,8 @@ int run_fight() {
 int print_listing(struct s_program* prog) {
 	printf("listing %d lines\n", prog->size);
 	for (int i=0;i<prog->size;i++) {
+		printf("%d: ", i);
 		print_red_line(&prog->lines[i]);
+		printf("\n");
 	}
 }
