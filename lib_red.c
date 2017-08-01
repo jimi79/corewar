@@ -118,8 +118,20 @@ int locate_log(int shift) {
 	printf("\033[%d;%dH\033[2K", screen_height-2+shift, 0);
 } 
 
-int read_src(char filename[MAX_SIZE_SRC], struct s_red_line src[MAX_SIZE_SRC]) {
-	FILE *in=NULL;
+int compare_two_cells(int a, int b) { 
+	if ((a<0) || (a>SIZE_CORE) ||
+	    (b<0) || (b>SIZE_CORE)) { return 0; }
+	return ((core[a].code.type ==core[b].code.type ) &&
+					(core[a].code.mod_A==core[b].code.mod_A) &&
+					(core[a].code.mod_B==core[b].code.mod_B) &&
+					(core[a].code.adr_A==core[b].code.adr_A) &&
+					(core[a].code.adr_B==core[b].code.adr_B));
+}
+
+
+
+int read_prog(char filename[MAX_SIZE_SRC], struct s_program* prog) {
+	FILE* in=NULL;
 	if ((in=fopen(filename, "rb")) == NULL) {
 		fprintf(stderr, "Error while opening %s\n", filename);
 		return 0;
@@ -128,27 +140,32 @@ int read_src(char filename[MAX_SIZE_SRC], struct s_red_line src[MAX_SIZE_SRC]) {
 	int j;
 	int read;
 	while (1) { 
-		src[i].type=0; src[i].mod_A=0; src[i].mod_B=0; src[i].adr_A=0; src[i].adr_B=0;
-		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].type =j; } else break;
-		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].mod_A=j; } else break;
-		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].mod_B=j; } else break;
-		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].adr_A=j; } else break;
-		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].adr_B=j; } else break; 
+		prog->lines[i].type =0;
+		prog->lines[i].mod_A=0;
+		prog->lines[i].mod_B=0;
+		prog->lines[i].adr_A=0;
+		prog->lines[i].adr_B=0;
+		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].type =j; } else break;
+		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].mod_A=j; } else break;
+		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].mod_B=j; } else break;
+		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].adr_A=j; } else break;
+		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].adr_B=j; } else break; 
 		i++;
 	} 
+	prog->size=i;
 	return i;
 }
 
-int install_program(struct s_red_line src[MAX_SIZE_SRC], int size, int to, int owner) {
+int install_program(struct s_program prog, int to, int owner) {
 	int i;
 	int dest;
-	for (i=0; i < size; i++) { 
+	for (i=0; i < prog.size; i++) { 
 		dest=(to + i) % SIZE_CORE;
-		core[dest].code.type =src[i].type;
-		core[dest].code.mod_A=src[i].mod_A; 
-		core[dest].code.mod_B=src[i].mod_B; 
-		core[dest].code.adr_A=src[i].adr_A; 
-		core[dest].code.adr_B=src[i].adr_B; 
+		core[dest].code.type =prog.lines[i].type;
+		core[dest].code.mod_A=prog.lines[i].mod_A; 
+		core[dest].code.mod_B=prog.lines[i].mod_B; 
+		core[dest].code.adr_A=prog.lines[i].adr_A; 
+		core[dest].code.adr_B=prog.lines[i].adr_B; 
 		core[dest].owner=owner;
 	}
 } 
@@ -426,28 +443,24 @@ int display_core_dump() {
 	int dotwritten=0;
 	printf("\n------core dump -----\n");
 	i=0;
-	while (i < SIZE_CORE) { 
-		while ((i < SIZE_CORE) &&
-					 (core[i].code.type==0) &&
-					 (core[i].code.mod_A==0) &&
-					 (core[i].code.mod_B==0) &&
-					 (core[i].code.adr_A==0) &&
-					 (core[i].code.adr_B==0)) { printf("."); i++; dotwritten=1; }
-		if (i < SIZE_CORE) { 
-			if (dotwritten) { printf("\n"); }
-			print_red_line(core[i].code);
-			if (i==cursor_A) {
-				 printf(" <--- cursor A");
-			};
-			if (i==cursor_B) {
-				 printf(" <--- cursor B");
-			};
-			printf("\n");
-			dotwritten=0;
-			i++;
+	int repetition=0; // number of repetitions of the last instruction.
+	while (i <= SIZE_CORE) { 
+		if (compare_two_cells(i, i-1)) { repetition++; }
+		else { 
+			if (repetition > 0) { printf("< %d times>\n", repetition); repetition=0; }
+			if (i < SIZE_CORE) { 
+				print_red_line(core[i].code);
+				if (i==cursor_A) {
+					 printf(" <--- cursor A");
+				};
+				if (i==cursor_B) {
+					 printf(" <--- cursor B");
+				};
+				printf("\n");
+			}
 		}
+		i++;
 	}
-	if (dotwritten) { printf("\n"); }
 } 
 
 int run_fight() {
@@ -493,3 +506,8 @@ int run_fight() {
 	return outcome;
 }
 
+int print_listing(struct s_program prog) {
+	for (int i=0;i<prog.size;i++) {
+		print_red_line(prog.lines[i]);
+	}
+}

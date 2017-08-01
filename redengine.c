@@ -3,9 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
-#include <sys/time.h>
-#include <time.h>
 #include <unistd.h>
 #include "lib_red.h"
 
@@ -29,13 +26,13 @@ int parse_parameters(int argc, char *argv[]) { // use ->truc instead of &val.tru
 		int ok=0;
 		if (!strcmp(argv[i], "--srcA")) { 
 			i++;
-			memcpy(filename_src_A, argv[i], strlen(argv[i]));
+			memcpy(filename_prog_A, argv[i], strlen(argv[i]));
 			mandatory--;
 			ok=1;
 		}
 		if (!strcmp(argv[i], "--srcB")) {
 			i++;
-			memcpy(filename_src_B, argv[i], strlen(argv[i]));
+			memcpy(filename_prog_B, argv[i], strlen(argv[i]));
 			mandatory--;
 			ok=1;
 		} 
@@ -76,13 +73,19 @@ int main(int argc, char *argv[]) {
 		return 1;
 	} 
 	get_term_size(); 
-	int size_A=read_src(filename_src_A, src_A); // src_A will have to be allocated in the function 
-	int size_B=read_src(filename_src_B, src_B); // src_B will have to be allocated in the function 
+	int size;
+	size=read_prog(filename_prog_A, &prog_A);
+	if (!size) { return 0; } 
+	size=read_prog(filename_prog_B, &prog_B); // prog_B will have to be allocated in the function 
+	if (!size) { return 0; }
 
-	if (!size_A) { return 0; } 
-	if (!size_B) { return 0; }
+	if (debug_level > 1) {
+		print_listing(prog_A);
+		print_listing(prog_B);
+		getchar();
+	} 
 
-	if (size_A + size_B > SIZE_CORE * 2) {
+	if (prog_A.size + prog_B.size > SIZE_CORE * 2) {
 		fprintf(stderr, "programs are too big, or memory too short\n");
 		return 1;
 	}
@@ -98,13 +101,13 @@ int main(int argc, char *argv[]) {
 
 	cursor_A=rand() % SIZE_CORE;
 	int left;
-	left=SIZE_CORE - size_A - size_B;
+	left=SIZE_CORE - prog_A.size - prog_B.size;
 	cursor_B=rand() % left;
-	if (cursor_B > (cursor_A - size_B)) {
-		cursor_B=cursor_B + size_A + size_B;
+	if (cursor_B > (cursor_A - prog_B.size)) {
+		cursor_B=cursor_B + prog_A.size + prog_B.size;
 	}
-	install_program(src_A, size_A, cursor_A, 1);
-	install_program(src_B, size_B, cursor_B, 2);
+	install_program(prog_A, cursor_A, 1);
+	install_program(prog_B, cursor_B, 2);
 	
 	int outcome;
 	outcome=run_fight();
