@@ -108,7 +108,7 @@ def championship(scores,files_):
 			for x in range(0, number_of_rounds):
 				a=files_[i]
 				b=files_[j]
-				res=run("bin/red --srcA %s --srcB %s" % (a,b))
+				res=run("bin/redengine --srcA %s --srcB %s" % (a,b))
 				if (verbose==2):
 					print("fight %s versus %s score %d" % (a,b,res))
 				if (not (res in [100,101,102])):

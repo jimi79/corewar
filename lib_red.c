@@ -7,93 +7,45 @@
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
+#include "var_red.h"
 
 
-// here is the code :)
-
-
-// les define en MAJUSCULES c mieux :-)
-#define size_core 1024
-#define max_size_src 1024
-
-// structure of source : 
-// 4 bytes for the type
-// 2 bytes for the mode for A
-// 2 bytes for the mode for B
-// 12 bytes for A value
-// 12 bytes for B value
-// total=32 bits, so 4 chars
-
-// 
-
-struct s_red_line {
-	signed int type; /*
-0 DAT
-1 MOV
-2 ADD
-3 SUB
-4 JMP
-5 JMZ
-6 DJZ
-7 CMP */
-	signed int mod_A; /*
-mode for adresse A : 
-* 0 : immediate "#"
-* 1 : relative (value of address) ""
-* 2 : indirect (value of value of address) */
-	signed int mod_B;
-	signed int adr_A; // address value
-	signed int adr_B;
-};
-
-// what do i need to store in CORE ?
-// well, i need to store one line of code, and last owner (A or B, 1, or 2, or null)
-// and i think that's it
-
-struct cell {
-	struct s_red_line code;
-	int owner; // 0 for none, 1 for A, 2 for B
-};
-
-char file_A[1024];
-char file_B[1024];
-short debug_level;
-short display; // 1 true or 0 false
-struct s_red_line src_A[max_size_src]; // araray of struct s_red_line
-struct s_red_line src_B[max_size_src]; // araray of struct s_red_line
-struct cell core[size_core];
-int cursor_A;
-int cursor_B;
-int screen_width;
-int screen_height;
-// char log_filename[1024]="";
-// int log_enabled=0;
-// FILE *log_file=NULL;
-
-//int write_log(char s[1024]) {
-//	if (log_enabled) {
-//		fwrite(s, 1, strlen(s)+1, log_file);
-//	}
-//}
-
-
-void handler_sigsegv(int sig) {
-	void *array[10];
-	size_t size;
-
-	// get void*'s for all entries on the stack
-	size = backtrace(array, 10);
-
-	// print out all the frames to stderr
-	fprintf(stderr, "Error: signal %d:\n", sig);
-	backtrace_symbols_fd(array, size, STDERR_FILENO);
-	exit(1);
+int get_term_size() { 
+	struct winsize w;
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); 
+	screen_width=w.ws_col;
+	screen_height=w.ws_row;
 }
 
+int print_red_line(struct s_red_line s) {
+	char type[4]; // instruction
+	char mod_A; // type of address for A
+	char mod_B; 
+	switch (s.type) {
+		case 0 : { strcpy(type,"DAT"); } break;
+		case 1 : { strcpy(type,"MOV"); } break;
+		case 2 : { strcpy(type,"ADD"); } break;
+		case 3 : { strcpy(type,"SUB"); } break;
+		case 4 : { strcpy(type,"JMP"); } break;
+		case 5 : { strcpy(type,"JMZ"); } break;
+		case 6 : { strcpy(type,"DJZ"); } break;
+		case 7 : { strcpy(type,"CMP"); } break;
+	}
+	switch (s.mod_A) {
+		case 0 : { mod_A='#'; } break;
+		case 1 : { mod_A=' '; } break;
+		case 2 : { mod_A='@'; } break;
+	}
+	switch (s.mod_B) {
+		case 0 : { mod_B='#'; } break;
+		case 1 : { mod_B=' '; } break;
+		case 2 : { mod_B='@'; } break;
+	}	
+	printf("%s %c%d, %c%d", type, mod_A, s.adr_A, mod_B, s.adr_B);
+}
 
-
-int print_short_type(struct s_red_line *s) {
-	switch (s->type) {
+int print_short_type(struct s_red_line s) {
+	switch (s.type) {
 		case -1 : { printf(" "); } break; // cannot happen, default value in mem is DAT #0,#0
 		case 0  : { printf("."); } break;
 		case 1  : { printf("M"); } break;
@@ -111,8 +63,12 @@ int locate_cell(int idx) {
 	x=idx % screen_width + 1;
 	y=idx / screen_width + 1; 
 	printf("\033[%d;%dH", y, x);
-	//locate_log(-2);
-	//printf("x=%d y=%d", x, y);
+}
+
+int randomize() { 
+	struct timeval t1;
+	gettimeofday(&t1, NULL);
+	srand(t1.tv_usec * t1.tv_sec);
 }
 
 int display_cell(int idx) {
@@ -124,13 +80,20 @@ int display_cell(int idx) {
 	if (owner==1) { bgcolor=41; }
 	if (owner==2) { bgcolor=44; }
 	printf("\033[%um", bgcolor); 
-	print_short_type(&core[idx].code);
+	print_short_type(core[idx].code);
 	printf("\033[0m"); 
 }
 
-static inline int copy_cell(int from, int to) {
-	unsigned int to_offset = to % size_core;
-	unsigned int from_offset = from % size_core;
+int display_full_core() {
+	int i;
+	for (i=0;i < SIZE_CORE; i++) {
+		display_cell(i);
+	}
+}
+
+int copy_cell(int from, int to) {
+	unsigned int to_offset = to % SIZE_CORE;
+	unsigned int from_offset = from % SIZE_CORE;
 
   memcpy(&core[to_offset], &core[from_offset], sizeof(core[to_offset]));
 	/*
@@ -143,19 +106,6 @@ static inline int copy_cell(int from, int to) {
 	if (display) { display_cell(to); }
 }
 
-int install_program(struct s_red_line src[max_size_src], int size, int to, int owner) {
-	int i;
-	int dest;
-	for (i=0; i < size; i++) { 
-		dest=(to + i) % size_core;
-		core[dest].code.type =src[i].type;
-		core[dest].code.mod_A=src[i].mod_A; 
-		core[dest].code.mod_B=src[i].mod_B; 
-		core[dest].code.adr_A=src[i].adr_A; 
-		core[dest].code.adr_B=src[i].adr_B; 
-		core[dest].owner=owner;
-	}
-}
 int pause_locate(int cursor) {
 	locate_cell(cursor);
 	fflush(stdout);
@@ -164,79 +114,11 @@ int pause_locate(int cursor) {
 	}
 } 
 
-int print_red_line(struct s_red_line *s) {
-	char type[4]; // instruction
-	char mod_A; // type of address for A
-	char mod_B; 
-	switch (s->type) {
-		case 0 : { strcpy(type,"DAT"); } break;
-		case 1 : { strcpy(type,"MOV"); } break;
-		case 2 : { strcpy(type,"ADD"); } break;
-		case 3 : { strcpy(type,"SUB"); } break;
-		case 4 : { strcpy(type,"JMP"); } break;
-		case 5 : { strcpy(type,"JMZ"); } break;
-		case 6 : { strcpy(type,"DJZ"); } break;
-		case 7 : { strcpy(type,"CMP"); } break;
-	}
-	switch (s->mod_A) {
-		case 0 : { mod_A='#'; } break;
-		case 1 : { mod_A=' '; } break;
-		case 2 : { mod_A='@'; } break;
-	}
-	switch (s->mod_B) {
-		case 0 : { mod_B='#'; } break;
-		case 1 : { mod_B=' '; } break;
-		case 2 : { mod_B='@'; } break;
-	}	
-	printf("%s %c%d, %c%d", type, mod_A, s->adr_A, mod_B, s->adr_B);
-}
+int locate_log(int shift) {
+	printf("\033[%d;%dH\033[2K", screen_height-2+shift, 0);
+} 
 
-int parse_parameters(int argc, char *argv[]) { // use ->truc instead of &val.truc
-	short i; 
-	short mandatory=2;
-	for(i=1; i < argc; i++) {
-		int ok=0;
-		if (!strcmp(argv[i], "--srcA")) { 
-			i++;
-			memcpy(file_A, argv[i], strlen(argv[i]));
-			mandatory--;
-			ok=1;
-		}
-		if (!strcmp(argv[i], "--srcB")) {
-			i++;
-			memcpy(file_B, argv[i], strlen(argv[i]));
-			mandatory--;
-			ok=1;
-		} 
-		if (!strcmp(argv[i], "--debug")) {
-			i++;
-			debug_level=(short)strtol(argv[i], NULL, 10); 
-			if (debug_level>0) { display=1; }
-			ok=1;
-		} 
-		if (!strcmp(argv[i], "--display")) { 
-			i++;
-			display=(short)strtol(argv[i], NULL, 10); 
-			ok=1;
-		} 
-		//if (!strcmp(code, "log")) { 
-		//	memcpy(log_filename, value, strlen(value));
-		//	log_enabled=1;
-		//} 
-		if (!ok) {
-			fprintf(stderr, "error, parameter %s unknown\n", argv[i]);
-			return 0;
-		}
-		
-	}; 
-	if (mandatory > 0) {
-		fprintf(stderr, "error, one parameter is missing. Mandatory parameters are srcA and srcB\n");
-		return 0;
-	}
-	return 1;
-}; 
-
-int read_src(char filename[max_size_src], struct s_red_line src[max_size_src]) {
+int read_src(char filename[MAX_SIZE_SRC], struct s_red_line src[MAX_SIZE_SRC]) {
 	FILE *in=NULL;
 	if ((in=fopen(filename, "rb")) == NULL) {
 		fprintf(stderr, "Error while opening %s\n", filename);
@@ -252,35 +134,37 @@ int read_src(char filename[max_size_src], struct s_red_line src[max_size_src]) {
 		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].mod_B=j; } else break;
 		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].adr_A=j; } else break;
 		read=fread(&j, 1, sizeof(j), in); if (read) { src[i].adr_B=j; } else break; 
-		//if (debug_level) { print_red_line(&src[i]); }
 		i++;
 	} 
 	return i;
 }
 
-int display_full_core() {
+int install_program(struct s_red_line src[MAX_SIZE_SRC], int size, int to, int owner) {
 	int i;
-	for (i=0;i < size_core; i++) {
-		display_cell(i);
+	int dest;
+	for (i=0; i < size; i++) { 
+		dest=(to + i) % SIZE_CORE;
+		core[dest].code.type =src[i].type;
+		core[dest].code.mod_A=src[i].mod_A; 
+		core[dest].code.mod_B=src[i].mod_B; 
+		core[dest].code.adr_A=src[i].adr_A; 
+		core[dest].code.adr_B=src[i].adr_B; 
+		core[dest].owner=owner;
 	}
-}
+} 
 
 int get_val(int method, int address) {
 	// return val
 	if (method==0) { return address; }
 	if (method==1) { 
-		if (address < 0) { address+=size_core; }
+		if (address < 0) { address+=SIZE_CORE; }
 		// we have to return value of B/A 
 	}
 }
 
-int locate_log(int shift) {
-	printf("\033[%d;%dH\033[2K", screen_height-2+shift, 0);
-}
-
 int adr(int val) {// return proper address, based on core size
-	if (val < 0) { val+=size_core; }
-	val=val%size_core;
+	if (val < 0) { val+=SIZE_CORE; }
+	val=val%SIZE_CORE;
 	return val;
 } 
 
@@ -288,14 +172,7 @@ int execute(int idx, int owner) {
 	struct s_red_line r;
 
 	char short_name=' ';
-	/*
-	switch (owner) {
-		case 1: { short_name='A'; } break;
-		case 2: { short_name='B'; } break;
-	} 
-	*/
-	short_name = 'A' + (owner - 1);
-
+	short_name = 'A' + (owner - 1); 
 
 	int A, B; // temp values
 	int A_is_adr=1; // A is an address. otherwise it's just a value. If it's an address, you copy the entire instruction
@@ -307,7 +184,7 @@ int execute(int idx, int owner) {
 
 	if (debug_level) { 
 		locate_log(-1);
-		print_red_line(&r);
+		print_red_line(r);
 	}
 
 	// return -1 if the guy lose
@@ -544,80 +421,40 @@ int execute(int idx, int owner) {
 	return idx;
 }
 
-int get_term_size() { 
-	struct winsize w;
-	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); 
-	screen_width=w.ws_col;
-	screen_height=w.ws_row;
-}
-
-int main(int argc, char *argv[]) {
-
-	signal(SIGSEGV, handler_sigsegv);   // install our handler
-
-	if (!parse_parameters(argc, argv)) {
-		return 1;
-	} 
-
-	int size_A=read_src(file_A, src_A); // SRC_A will have to be allocated in the function 
-	int size_B=read_src(file_B, src_B); // SRC_B will have to be allocated in the function 
-
-	// TODO display source code for each if debug > 5
-
-	if (!size_A) {
-		return 0;
-	} 
-	if (!size_B) {
-		return 0;
-	}
-
+int display_core_dump() {
 	int i;
-	for (i=0;i<size_core;i++) {
-		core[i].code.type=0; // at first, we write DAT #0, #0 everywhere
-		core[i].code.mod_A=0;
-		core[i].code.mod_B=0;
-		core[i].code.adr_A=0;
-		core[i].code.adr_B=0;
-	} 
-
-	if (size_A + size_B > size_core * 2) {
-		fprintf(stderr, "Programs are too big, or memory too tiny\n");
-		return 1;
+	int dotwritten=0;
+	printf("\n------core dump -----\n");
+	i=0;
+	while (i < SIZE_CORE) { 
+		while ((i < SIZE_CORE) &&
+					 (core[i].code.type==0) &&
+					 (core[i].code.mod_A==0) &&
+					 (core[i].code.mod_B==0) &&
+					 (core[i].code.adr_A==0) &&
+					 (core[i].code.adr_B==0)) { printf("."); i++; dotwritten=1; }
+		if (i < SIZE_CORE) { 
+			if (dotwritten) { printf("\n"); }
+			print_red_line(core[i].code);
+			if (i==cursor_A) {
+				 printf(" <--- cursor A");
+			};
+			if (i==cursor_B) {
+				 printf(" <--- cursor B");
+			};
+			printf("\n");
+			dotwritten=0;
+			i++;
+		}
 	}
+	if (dotwritten) { printf("\n"); }
+} 
 
-	struct timeval t1;
-	gettimeofday(&t1, NULL);
-	srand(t1.tv_usec * t1.tv_sec);
-
-	//srand(time(NULL)); // sucks, because i might run that program multiples times in one sec
-	cursor_A=rand() % size_core;
-	int left;
-	left=size_core - size_A - size_B;
-	cursor_B=rand() % left;
-	if (cursor_B > (cursor_A - size_B)) {
-		cursor_B=cursor_B + size_A + size_B;
-	}
-	int tmp_A, tmp_B;
+int run_fight() {
+	int i, tmp_A, tmp_B;
 	tmp_A=cursor_A;
 	tmp_B=cursor_B;
 
-	//printf("ca=%u cb=%u\n", cursor_A, cursor_B);
-
-	get_term_size();
-
-	for (i=0; i < size_A; i++) {
-		install_program(src_A, size_A, cursor_A, 1);
-	}
-	for (i=0; i < size_B; i++) {
-		install_program(src_B, size_B, cursor_B, 2);
-	}
-
-	if (debug_level>1) {
-		printf("Starting program A at %d\n", cursor_A);
-		printf("Starting program B at %d\n", cursor_B);
-		getchar();
-	}
-	
 	if (display) {
 		printf("\033[2J");
 		display_full_core(); 
@@ -626,12 +463,9 @@ int main(int argc, char *argv[]) {
 
 	int outcome=100; // outcome of the match. 100=tie, 101 A wins, 102 B wins
 
-	int max_run = size_core * 2;
+	int max_run = SIZE_CORE * 2;
 
 	for (i=0;i<max_run;i++) {
-	//for (i=0;i<4;i++) {
-		// break if someone fails
-
 		tmp_A=execute(cursor_A, 1); // if -1, then lose
 		if (display) { pause_locate(cursor_A); };
 		tmp_B=execute(cursor_B, 2); // if -1, then lose
@@ -656,43 +490,6 @@ int main(int argc, char *argv[]) {
 	if (display) {
 		printf("\033[%d;%dH", screen_height-1, 0);
 	}
-	if (display) {
-		switch (outcome) {
-			case 100: { printf("Tie\n"); } break;
-			case 101: { printf("A win\n"); } break;
-			case 102: { printf("B win\n"); } break;
-		}
-	} 
-	if (debug_level) {
-		int dotwritten=0;
-		printf("\n------core dump -----\n");
-		i=0;
-		while (i < size_core) { 
-			while ((i < size_core) &&
-						 (core[i].code.type==0) &&
-					   (core[i].code.mod_A==0) &&
-					   (core[i].code.mod_B==0) &&
-					   (core[i].code.adr_A==0) &&
-					   (core[i].code.adr_B==0)) { printf("."); i++; dotwritten=1; }
-			if (i < size_core) { 
-				if (dotwritten) { printf("\n"); }
-				print_red_line(&core[i].code);
-				if (i==cursor_A) {
-					 printf(" <--- cursor A");
-				};
-				if (i==cursor_B) {
-					 printf(" <--- cursor B");
-				};
-				printf("\n");
-				dotwritten=0;
-				i++;
-			}
-		}
-		if (dotwritten) { printf("\n"); }
-	} 
-	// output start location to find why i segfault from time to time
-	// do that with a debug level
-	// if debug_level >=1, display starting pos. debug > x makes request of presskey each time. actually maybe 1 anyway.
-	// have a list of all debug level needed, and sort them
-	return outcome; 
+	return outcome;
 }
+

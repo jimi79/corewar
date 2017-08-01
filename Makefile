@@ -1,9 +1,9 @@
 BIN=./bin
 SOURCE=./
 CFLAGS?=-ggdb
-LIBS=
+LIBS=lib_red.c 
 
-LIST=$(BIN)/red
+LIST=$(BIN)/redengine
 
 all: $(LIST)
 

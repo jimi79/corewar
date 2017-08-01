@@ -135,3 +135,7 @@ because basically, i could just have two guys fighting, and if one mostly lose, 
 Or, having another C program, that is like : i create two programs, empty. both lose. i take the first, and tweak it, till it win at least 75% of fights. If so, i do the same for the other one.
 
 
+
+
+
+run : no install, no init, just run
