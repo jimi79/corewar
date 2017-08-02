@@ -38,8 +38,6 @@ char filename_prog_B[1024];
 short debug_level;
 short display; // 1 true or 0 false
 struct cell core[SIZE_CORE];
-int cursor_A;
-int cursor_B;
 int screen_width;
 int screen_height; 
 struct s_program prog_A; // araray of struct s_red_line

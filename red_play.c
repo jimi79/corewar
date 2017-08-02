@@ -195,33 +195,74 @@ int test(struct s_program* program) {
 }
 
 int main(int argc, char *argv[]) {
+	int i,j,k,l; // some increments
 	randomize();
-	// we create a list of programs, and init all of them with a DAT #0,#0
-	int program_count=2; // count of poll of programs, that we'll have evolving till it can win against each other, at least xx % of the time
-	float percent_fight_to_win=0.75; // percentages of fight to win to be declared better
-	int count_fights=10; // number of rounds for each meeting
-
-
+	float percent_fight_to_win=0.5; // percentages of fight to win to be declared better
+	int count_fights=10; // number of rounds for each meeting 
+	int count_fighters=100;
 	struct s_program programs[program_count];
+	for (i=0;i<count_fighters;i++) {
+		programs[0].size=0; 
+	}
+
 	// we initialize both programs empty
 
-	programs[0].size=0; 
-	load_prog("bin/dwarf.cw", &program[1]);
-	programs[1].size=0; 
+	int cursor_A, cursor_B;
 
-	int ev=0; // index of the thing to evolve
+	get_term_size();
+	int outcome;
+	int win_A=0;
+	int win_B=0;
 
-	
+	for (int k=0; k < 10; k++) {
+	}
 
-	//run_fight(); // arg, parameters, cursor and everything. godamnit
-	// either i use an object, either i keep that global.
-	// i need a fucking object to store all of that.
-	// or give pointers. yeah :
-	// pointer to code
-	// pointer to cursor_A
-	// pointer to cursor_B
-	// pointer to fighter_A (a program)
-	// pointer to fighter_B (a program)
+/*
+we init all program to be empty
+we fight first vs 2, first vs 3, etc
+then we fight second vs 3, vs 4, then vs 1st
+then we fight nth versus n+1, n+2, ..., n-1 (modulo used)
+for each :
+	we fight all other fights, each x times, then we mutate (one out of the three method picked at random)
+	and we keep going on till it win n% of the fights
+
+so
+for k times
+	for i each fighters
+		percent of win =0
+		for j each other fighter (<count all fighters -1 )
+			other fighter = i + j modulo count of fighers
+			update number of win
+		percent of win = number of win / count of fights
+		while percent of win < 0.5
+			for l number of fights
+				fight
+			make the avg
+			if percent of win < 0.5
+				mutate one way or another
+
+		each time a mutation win more than 0.5 %, we display the source code
+
+
+				if 
+
+
+	for (i=0; i<number_of_fights; i++) {
+		init_core();
+		get_random(&cursor_A, &cursor_B, &programs[ev], &programs[adv]); 
+		install_program(&programs[ev], cursor_A, 1); 
+		install_program(&programs[adv], cursor_B, 2);
+		outcome=run_fight(&cursor_A, &cursor_B); 
+		switch (outcome) {
+			case 100: { } break;
+			case 101: { win_A++; } break;
+			case 102: { win_B++; } break;
+			default: { printf("error #%d\n", outcome); } break;
+		}
+	}
+	float percent=win_A*1.0/number_of_fights*100;
+	printf("%d/%d wins, %0.2f%%\n", win_A, number_of_fights, percent);
+*/
 
 	
 	

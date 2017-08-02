@@ -167,6 +167,7 @@ int load_prog(char filename[MAX_SIZE_SRC], struct s_program* prog) {
 		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].mod_B=j; } else break;
 		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].adr_A=j; } else break;
 		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].adr_B=j; } else break; 
+		//TODO check syntax here, like type between 0 and 7, mod between 0 and 3, and that's all
 		i++;
 	} 
 	prog->size=i;
@@ -455,7 +456,29 @@ int execute(int idx, int owner) {
 	return idx;
 }
 
-int display_core_dump() {
+int get_random(int* cursor_A, int* cursor_B, struct s_program* prog_A, struct s_program* prog_B) {
+	*cursor_A=rand() % SIZE_CORE;
+	int left;
+	left=SIZE_CORE - prog_A->size - prog_B->size;
+	*cursor_B=rand() % left;
+	if (*cursor_B > (*cursor_A - prog_B->size)) {
+		cursor_B=cursor_B + prog_A->size + prog_B->size;
+	}
+	return 1;
+}
+
+int init_core() {
+	int i;
+	for (i=0;i<SIZE_CORE;i++) {
+		core[i].code.type=0; // at first, we write DAT #0, #0 everywhere
+		core[i].code.mod_A=0;
+		core[i].code.mod_B=0;
+		core[i].code.adr_A=0;
+		core[i].code.adr_B=0;
+	} 
+} 
+
+int display_core_dump(int cursor_A, int cursor_B) {
 	int i;
 	int dotwritten=0;
 	printf("\n------core dump -----\n");
@@ -480,10 +503,10 @@ int display_core_dump() {
 	}
 } 
 
-int run_fight() {
+int run_fight(int* cursor_A, int* cursor_B) { // cursor values are modified
 	int i, tmp_A, tmp_B;
-	tmp_A=cursor_A;
-	tmp_B=cursor_B;
+	tmp_A=*cursor_A;
+	tmp_B=*cursor_B;
 
 	if (display) {
 		printf("\033[2J");
@@ -496,10 +519,10 @@ int run_fight() {
 	int max_run = SIZE_CORE * 2;
 
 	for (i=0;i<max_run;i++) {
-		tmp_A=execute(cursor_A, 1); // if -1, then lose
-		if (display) { pause_locate(cursor_A); };
-		tmp_B=execute(cursor_B, 2); // if -1, then lose
-		if (display) { pause_locate(cursor_B); };
+		tmp_A=execute(*cursor_A, 1); // if -1, then lose
+		if (display) { pause_locate(*cursor_A); };
+		tmp_B=execute(*cursor_B, 2); // if -1, then lose
+		if (display) { pause_locate(*cursor_B); };
 
 		if ((tmp_A==-1) && (tmp_B==-1)) {
 			outcome=100;
@@ -514,8 +537,8 @@ int run_fight() {
 			outcome=101;
 			break;
 		} 
-		cursor_A=tmp_A;
-		cursor_B=tmp_B; 
+		*cursor_A=tmp_A;
+		*cursor_B=tmp_B; 
 	} 
 	if (display) {
 		printf("\033[%d;%dH", screen_height-1, 0);

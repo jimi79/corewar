@@ -20,3 +20,5 @@ int print_short_type(struct s_red_line* s);
 int randomize();
 int load_prog(char filename[MAX_SIZE_SRC], struct s_program* prog);
 int run_fight();
+int init_core();
+int get_random(int* cursor_A, int* cursor_B, struct s_program* prog_A, struct s_program* prog_B);

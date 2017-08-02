@@ -90,27 +90,16 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	int i;
-	for (i=0;i<SIZE_CORE;i++) {
-		core[i].code.type=0; // at first, we write DAT #0, #0 everywhere
-		core[i].code.mod_A=0;
-		core[i].code.mod_B=0;
-		core[i].code.adr_A=0;
-		core[i].code.adr_B=0;
-	} 
+	int cursor_A, cursor_B;
 
-	cursor_A=rand() % SIZE_CORE;
-	int left;
-	left=SIZE_CORE - prog_A.size - prog_B.size;
-	cursor_B=rand() % left;
-	if (cursor_B > (cursor_A - prog_B.size)) {
-		cursor_B=cursor_B + prog_A.size + prog_B.size;
-	}
-	install_program(&prog_A, cursor_A, 1);
+	init_core();
+	get_random(&cursor_A, &cursor_B, &prog_A, &prog_B);
+
+	install_program(&prog_A, cursor_A, 1); // owner limited between 0 (none) 1 and 2, because it affects the color on the board, which i choose properly
 	install_program(&prog_B, cursor_B, 2);
 	
 	int outcome;
-	outcome=run_fight();
+	outcome=run_fight(&cursor_A, &cursor_B);
 
 	if (display) {
 		switch (outcome) {
@@ -121,7 +110,7 @@ int main(int argc, char *argv[]) {
 	} 
 
 	if (debug_level) {
-		display_core_dump();
+		display_core_dump(cursor_A, cursor_B);
 	} 
 	// output start location to find why i segfault from time to time
 	// do that with a debug level
