@@ -19,7 +19,7 @@
 #include <unistd.h>
 #include "lib_red.h"
 
-int verbose=1; // debugging
+int verbose=0; // debugging
 
 int mutate_change(struct s_program* program, int force_append, int big_mutate) { // 1 force append
 	int idx;
@@ -68,6 +68,8 @@ int mutate_duplicate_location(struct s_program* program, int a, int b, int pos) 
 	// we pick a and b (intervert if needed)
 	// then we insert, by moving one from x steps to the end. discard lines if outside max
 	
+	if (program->size==0) { return 1; } //  error !
+
 	if (verbose) { printf("a=%d b=%d\n", a, b); }
 	int size=b-a; // we don't pick line b actually
 	if (verbose) { printf("size=%d, prog size=%d\n", size, program->size); }
@@ -104,6 +106,7 @@ int mutate_duplicate_location(struct s_program* program, int a, int b, int pos) 
 }
 
 int mutate_duplicate(struct s_program* program) {
+	if (program->size==0) { return 0; }
 	int a=random() % (program->size);
 	int b=random() % program->size + 1; // b excluded from copy
 	if (b<a) {
@@ -111,11 +114,13 @@ int mutate_duplicate(struct s_program* program) {
 	if (b==a) {
 		b=a+1; } // a can't be at the end anyway, so i can add 1 to it 
 	int size=b-a; // we don't pick line b actually
-	int pos=(random() % (program->size-size)) + 1; // we insert before that index
+	int pos;
+	pos=(random() % (program->size-size+1));
 	return mutate_duplicate_location(program, a, b, pos);
 }
 
 int mutate_remove(struct s_program* program) {
+	if (program->size==0) { return 0; }
 	int a=random() % program->size;
 	int b=random() % program->size + 1; // b excluded from copy
 	if (b<a) {
@@ -197,12 +202,14 @@ int test(struct s_program* program) {
 int main(int argc, char *argv[]) {
 	int i,j,k,l; // some increments
 	randomize();
-	float percent_fight_to_win=0.5; // percentages of fight to win to be declared better
-	int count_fights=10; // number of rounds for each meeting 
-	int count_fighters=100;
-	struct s_program programs[program_count];
+	float min_percent=50; // percentages of fight to win to be declared better
+	int count_rounds=10; // number of rounds for each meeting 
+	int count_fighters=10;
+	int count_turns=1000; // number of turnes amongst all fighters
+	struct s_program programs[count_fighters];
 	for (i=0;i<count_fighters;i++) {
-		programs[0].size=0; 
+		programs[i].size=0; 
+		mutate_change(&programs[i], 0, 0); // to force a program of size 1 at least
 	}
 
 	// we initialize both programs empty
@@ -213,8 +220,50 @@ int main(int argc, char *argv[]) {
 	int outcome;
 	int win_A=0;
 	int win_B=0;
+	int opp; // opponent index
+	int count;
+	int r_mut; // choice of the mutation
+	float percent;
 
-	for (int k=0; k < 10; k++) {
+	for (k=0; k<count_turns; k++) {
+		for (i=0; i<count_fighters; i++) {
+			percent=0;
+			while (percent<min_percent) {
+				count=0; // total number of fights
+				win_A=0;
+				win_B=0;
+				for (j=0; j<count_rounds-1;j++) {
+					for (l=0; l<count_rounds; l++) {
+						opp=(i+j) % count_fighters;
+						init_core();
+						get_random(&cursor_A, &cursor_B, &programs[i], &programs[opp]); 
+						install_program(&programs[i], cursor_A, 1); 
+						install_program(&programs[opp], cursor_B, 2);
+						outcome=run_fight(&cursor_A, &cursor_B); 
+						count++;
+						switch (outcome) {
+							case 100: { } break;
+							case 101: { win_A++; } break;
+							case 102: { win_B++; } break;
+							default: { printf("error #%d\n", outcome); } break;
+						}
+					}
+				}
+				percent=win_A*1.0/count*100;
+				if (percent<min_percent) {
+					r_mut=random()%3;
+					switch (r_mut) {
+						case 0: { mutate_change(&programs[i], 0, 0); } break;
+						case 1: { mutate_duplicate(&programs[i]); } break;
+						case 2: { mutate_remove(&programs[i]); } break;
+					}
+					//printf("-- after_mutate --\n");
+					//print_listing(&programs[i]);
+				}
+			}
+			printf("figher %d : %d/%d wins, %0.2f%%\n", i, win_A, count, percent); 
+			print_listing(&programs[i]); 
+		}
 	}
 
 /*
@@ -242,9 +291,6 @@ for k times
 				mutate one way or another
 
 		each time a mutation win more than 0.5 %, we display the source code
-
-
-				if 
 
 
 	for (i=0; i<number_of_fights; i++) {

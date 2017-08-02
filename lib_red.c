@@ -335,8 +335,8 @@ int execute(int idx, int owner) {
 									A=adr(core[A].code.adr_B); 
 				} break; 
 				case 2: { A=adr(idx+r.adr_A); 
-									A=adr(core[A].code.adr_B);
-									A=adr(core[idx+A].code.adr_B); 
+									A=adr(idx+core[A].code.adr_B);
+									A=adr(core[A].code.adr_B); 
 				} break; 
 			}
 			switch (r.mod_B) {
