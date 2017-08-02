@@ -22,3 +22,7 @@ int load_prog(char filename[MAX_SIZE_SRC], struct s_program* prog);
 int run_fight();
 int init_core();
 int get_random(int* cursor_A, int* cursor_B, struct s_program* prog_A, struct s_program* prog_B);
+int mutate_change(struct s_program* program, int force_append, int big_mutate);
+int mutate_duplicate_location(struct s_program* program, int a, int b, int pos);
+int mutate_duplicate(struct s_program* program);
+int mutate_remove(struct s_program* program);

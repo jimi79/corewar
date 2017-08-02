@@ -554,3 +554,129 @@ int print_listing(struct s_program* prog) {
 		printf("\n");
 	}
 }
+
+int mutate_change(struct s_program* program, int force_append, int big_mutate) { // 1 force append
+	int idx;
+	if ((force_append) || (program->size==0)) {
+		program->size++;
+		idx=program->size-1; 
+		init_line(&program->lines[idx], 0, 0, 0, 0, 0);
+	} else { idx=rand() % program->size; }
+
+	int field=random() % 5; 
+	int* pfield;
+	int max_val; // max value + 1, will be used as %
+	switch (field) {
+		case 0: {
+			max_val=8;
+			pfield=&(program->lines[idx].type);
+		} break;
+		case 1: {
+			max_val=3;
+			pfield=&program->lines[idx].mod_A; 
+		} break; 
+		case 2: {
+			max_val=3;
+			pfield=&program->lines[idx].mod_B; 
+		} break;
+		case 3: {
+			max_val=SIZE_CORE;
+			pfield=&program->lines[idx].adr_A; 
+		} break;
+		case 4: {
+			max_val=SIZE_CORE;
+			pfield=&program->lines[idx].adr_B; 
+		} break;
+	} 
+	int b; 
+	b=*pfield;
+	int r=10; // range of change
+	if (big_mutate) { r=1000; }
+	*pfield=random() % r - 5 + *pfield; 
+	while (*pfield < 0) { *pfield=*pfield+max_val; }
+	*pfield=*pfield % max_val; 
+	return idx;
+}
+
+int mutate_duplicate_location(struct s_program* program, int a, int b, int pos) {
+	// we pick a and b (intervert if needed)
+	// then we insert, by moving one from x steps to the end. discard lines if outside max
+	
+	if (program->size==0) { return 1; } //  error !
+
+	if (debug_level) { printf("a=%d b=%d\n", a, b); }
+	int size=b-a; // we don't pick line b actually
+	if (debug_level) { printf("size=%d, prog size=%d\n", size, program->size); }
+	
+	int shifted=0; // the source we copy is before
+	if ((pos<b) && (pos>a)) { pos=pos+size; } // we have to insert not in the middle of what we copy
+	if (pos<a) { shifted=1; }
+		// if shifted, the source is after what we copy, so we read from the new location of it
+	int i; 
+	if (debug_level) { printf("duplicating from %d to %d before pos %d\n", a, b, pos);  }
+	int src,dst;
+	program->size=program->size+size;
+	if (program->size > MAX_SIZE_SRC) {
+		program->size = MAX_SIZE_SRC; }
+	if (pos<program->size) {
+		for (i=program->size-1; i>=pos+size; i--) {
+			if (i < MAX_SIZE_SRC) {
+				src=i-size;
+				dst=i;
+				if (debug_level) { printf("moving line %d to %d\n", src, dst); }
+				copy_line(program, i-size, i); 
+			}
+		}
+	}
+	if (debug_level) { printf("shifted=%d\n", shifted); }
+	for (i=0; i<size; i++) {
+		src=i+a+shifted*size;
+		dst=i+pos;
+		if ((dst < MAX_SIZE_SRC) && (src < MAX_SIZE_SRC)) {
+			if (debug_level) { printf("and moving line %d to %d\n", src, dst); }
+			copy_line(program, src, dst);
+		}
+	}
+}
+
+int mutate_duplicate(struct s_program* program) {
+	if (program->size==0) { return 0; }
+	int a=random() % (program->size);
+	int b=random() % program->size + 1; // b excluded from copy
+	if (b<a) {
+		int c; c=a; a=b; b=c; }
+	if (b==a) {
+		b=a+1; } // a can't be at the end anyway, so i can add 1 to it 
+	int size=b-a; // we don't pick line b actually
+	int pos;
+	pos=(random() % (program->size-size+1));
+	return mutate_duplicate_location(program, a, b, pos);
+}
+
+int mutate_remove(struct s_program* program) {
+	if (program->size==0) { return 0; }
+	int a=random() % program->size;
+	int b=random() % program->size + 1; // b excluded from copy
+	if (b<a) {
+		int c; c=a; a=b; b=c; }
+	if (b==a) {
+		b=a+1; } // a can't be at the end anyway, so i can add 1 to it 
+	
+	if (debug_level) { printf("a=%d b=%d\n", a, b); }
+
+	int size=b-a;
+	int src, dst;
+	if (debug_level) { printf("removing from %d to %d\n", a, b); }
+	int end=size;
+	if (end > program->size-b) { end=program->size-b; }
+	for (int i=0;i<end; i++) {
+		dst=i+a;
+		src=i+a+size;
+		if (debug_level) { printf("moving %d -> %d\n", src, dst); }
+		copy_line(program, src, dst);
+	}
+	program->size=program->size-size;
+
+}
+
+

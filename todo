@@ -198,3 +198,10 @@ i=6.
 		5 6
 3 5
 
+
+
+
+
+save and load for the pool of fighters. save and load to /tmp/blah (create dir if doesn't exists), with a loop for all
+i save to /tmp/, up to the user to backup them (for now)
+note : when saving, save two versions of the program : cw and red

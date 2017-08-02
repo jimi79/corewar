@@ -3,7 +3,7 @@ SOURCE=./
 CFLAGS?=-ggdb
 LIBS=lib_red.c 
 
-LIST=$(BIN)/redengine $(BIN)/red_play
+LIST=$(BIN)/red_poll $(BIN)/red_duelling $(BIN)/red_engine
 
 all: $(LIST)
 
