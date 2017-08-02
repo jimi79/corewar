@@ -278,8 +278,8 @@ int execute(int idx, int owner) {
 									A=core[A].code.adr_B; 
 				} break; 
 				case 2: { A=adr(idx+r.adr_A); 
-									A=adr(core[A].code.adr_B);
-									A=adr(core[idx+A].code.adr_B); 
+									A=adr(idx+core[A].code.adr_B);
+									A=adr(core[A].code.adr_B); 
 				} break; 
 			}
 			switch (r.mod_B) {
@@ -654,17 +654,14 @@ int mutate_duplicate(struct s_program* program) {
 }
 
 int mutate_remove(struct s_program* program) {
-	if (program->size==0) { return 0; }
-	int a=random() % program->size;
-	int b=random() % program->size + 1; // b excluded from copy
-	if (b<a) {
-		int c; c=a; a=b; b=c; }
-	if (b==a) {
-		b=a+1; } // a can't be at the end anyway, so i can add 1 to it 
-	
-	if (debug_level) { printf("a=%d b=%d\n", a, b); }
-
-	int size=b-a;
+	if (program->size<=1) { return 0; } 
+	int max_size=program->size/10;
+	if (max_size==0) { return 0; } 
+	if (debug_level) { printf("max_size=%d\n", max_size); }
+	int size=random() % (max_size-1) + 1; 
+	int a=random() % (program->size-size - 1) + 1; 
+	int b=a+size;
+	if (debug_level) { printf("a=%d b=%d\n", a, b); } 
 	int src, dst;
 	if (debug_level) { printf("removing from %d to %d\n", a, b); }
 	int end=size;
@@ -676,7 +673,7 @@ int mutate_remove(struct s_program* program) {
 		copy_line(program, src, dst);
 	}
 	program->size=program->size-size;
-
+	return size;
 }
 
 
