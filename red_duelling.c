@@ -66,6 +66,7 @@ int run(int argc, char *argv[]) {
 	int n=0;
 	int mid_dis=0; // some midtime display from time to time
 	int count_mutations;
+	int generation=0;
 	while (n<10) {
 		n++;
 		win_A=0;
@@ -119,10 +120,12 @@ int run(int argc, char *argv[]) {
 			} 
 			mid_dis++;
 			if (mid_dis>1000) {
+				printf("generation %d\n", generation);
 				print_listing_limit(&prgA, 19);
 				mid_dis=0;
 			} 
 		} 
+		generation++;
 		printf("win %0.0f%% of fights.", percent);
 		printf("\n");
 		print_listing(&prgA);
