@@ -8,6 +8,20 @@
 
 int verbose=0; // debugging
 
+int test2() {
+	debug_level=1;
+	struct s_program A; 
+	A.size=0;
+	for (int i=0; i < 7;i++) {
+		mutate_change(&A, 1, 0);
+	}
+	print_listing(&A);
+	for (int i=0; i < 100;i++) {
+		mutate_change(&A, 0, 0);
+	}
+	print_listing(&A);
+}
+
 int test() {
 	debug_level=1;
 	struct s_program A; 
@@ -34,8 +48,9 @@ int test() {
 
 int run(int argc, char *argv[]) {
 	int i,j,k,l; // some increments
-	float min_percent=60; // percentages of fight to win to be declared better
+	float min_percent=50; // percentages of fight to win to be declared better
 	int count_rounds=10; // number of rounds for each meeting 
+	int max_mutations_before_reset=100; // number of mutations before we restart from the first one and try another tree
 	struct s_program prgA;
 	struct s_program prgB; 
 	prgA.size=0;
@@ -50,11 +65,13 @@ int run(int argc, char *argv[]) {
 	int r_mut;
 	int n=0;
 	int mid_dis=0; // some midtime display from time to time
+	int count_mutations;
 	while (n<10) {
 		n++;
 		win_A=0;
 		count=0; 
-		percent=0;
+		percent=0; 
+		count_mutations=0;
 		while (percent < min_percent) {
 			for (i=0;i<count_rounds;i++) {
 				init_core();
@@ -71,16 +88,20 @@ int run(int argc, char *argv[]) {
 				} 
 			}
 			percent=win_A*1.0/count*100;
-			if (percent<min_percent) {
-				for (i=0;i<prgB.size;i++) {
-					prgA.lines[i].type=prgB.lines[i].type;
-					prgA.lines[i].mod_A=prgB.lines[i].mod_A;
-					prgA.lines[i].mod_B=prgB.lines[i].mod_B;
-					prgA.lines[i].adr_A=prgB.lines[i].adr_A;
-					prgA.lines[i].adr_B=prgB.lines[i].adr_B;
-				}
-				prgA.size=prgB.size;
-				// if we failed, we restart from the opponent
+			if (percent<min_percent) { 
+				if (count_mutations>max_mutations_before_reset) {
+					//printf("clean that source\n");
+					//print_listing(&prgA);
+					count_mutations=0; 
+					for (i=0;i<prgB.size;i++) {
+						prgA.lines[i].type=prgB.lines[i].type;
+						prgA.lines[i].mod_A=prgB.lines[i].mod_A;
+						prgA.lines[i].mod_B=prgB.lines[i].mod_B;
+						prgA.lines[i].adr_A=prgB.lines[i].adr_A;
+						prgA.lines[i].adr_B=prgB.lines[i].adr_B;
+					}
+					prgA.size=prgB.size;
+				} 
 				if (prgA.size==0) { r_mut=0; } 
 				else {
 					if (prgA.size<10) { r_mut=random()%2; }
@@ -91,18 +112,19 @@ int run(int argc, char *argv[]) {
 					case 1: { mutate_duplicate(&prgA); } break;
 					case 2: { mutate_remove(&prgA); } break;
 				}
+				count_mutations++;
 				if (prgA.size==0) { 
 					return 99;
 				}
 			} 
 			mid_dis++;
 			if (mid_dis>1000) {
-				print_listing(&prgA);
+				print_listing_limit(&prgA, 19);
 				mid_dis=0;
 			} 
 		} 
-		printf("win %f%% of fights.", percent);
-		printf("\nlisting");
+		printf("win %0.0f%% of fights.", percent);
+		printf("\n");
 		print_listing(&prgA);
 		// print something
 		// copy A to B
@@ -120,7 +142,10 @@ int run(int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
 	randomize();
-	/*test();
-	return 0;*/
+	debug_level=0;
+	if (debug_level==1) {
+		test2();
+		return 0;
+	}
 	run(argc, argv);
 }

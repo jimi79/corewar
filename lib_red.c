@@ -546,8 +546,20 @@ int run_fight(int* cursor_A, int* cursor_B) { // cursor values are modified
 	return outcome;
 }
 
+int print_listing_limit(struct s_program* prog, int limit) {
+	int more=0;
+	int m;
+	m=prog->size;
+	if (m>limit) { m=limit; more=1; }
+	for (int i=0;i<m;i++) {
+		printf("%d: ", i);
+		print_red_line(&prog->lines[i]);
+		printf("\n");
+	}
+	if (more) { printf("...\n"); }
+}
+
 int print_listing(struct s_program* prog) {
-	printf("listing %d lines\n", prog->size);
 	for (int i=0;i<prog->size;i++) {
 		printf("%d: ", i);
 		print_red_line(&prog->lines[i]);
@@ -592,7 +604,7 @@ int mutate_change(struct s_program* program, int force_append, int big_mutate) {
 	b=*pfield;
 	int r=10; // range of change
 	if (big_mutate) { r=1000; }
-	*pfield=random() % r - 5 + *pfield; 
+	*pfield=random() % r - (r/2) + *pfield; 
 	while (*pfield < 0) { *pfield=*pfield+max_val; }
 	*pfield=*pfield % max_val; 
 	return idx;
