@@ -7,16 +7,16 @@ struct s_test {
 	int b;
 };
 
+int test(struct s_test* blah)
+{
+	printf("%d %d\n", blah[2].a, blah[2].b);
+}
 
 int main (int argc, char *argv[] ) {
-	int a=-1;
-	printf("%d %d\n", a, a%4096);
-
-
-	char s[1024];
-	strcpy(s,"coucodqwelkqjwelu");
-	printf("%d\n", strlen(s));
-
-	a=6 % 1;
-	printf("%d\n", a);
+	struct s_test blah[100];
+	for (int i=0;i<100;i++) {
+		blah[i].a=i;
+		blah[i].b=i*2;
+	}
+	test(blah); 
 }

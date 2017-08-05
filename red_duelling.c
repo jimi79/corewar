@@ -8,6 +8,20 @@
 
 int verbose=0; // debugging
 
+int test3() {
+	struct s_program A; 
+	A.size=0;
+	for (int i=0; i < 7;i++) {
+		mutate_change(&A, 1, 0);
+	}
+	struct s_program B; 
+	B.size=0;
+	for (int i=0; i < 3;i++) {
+		mutate_change(&B, 1, 0);
+	}
+	print_two_listing(&A, &B);
+} 
+
 int test2() {
 	debug_level=1;
 	struct s_program A; 
@@ -48,11 +62,12 @@ int test() {
 
 int run(int argc, char *argv[]) {
 	int i,j,k,l; // some increments
-	float min_percent=50; // percentages of fight to win to be declared better
+	float min_percent=75; // percentages of fight to win to be declared better
 	int count_rounds=10; // number of rounds for each meeting 
 	int max_mutations_before_reset=100; // number of mutations before we restart from the first one and try another tree
 	struct s_program prgA;
 	struct s_program prgB; 
+	struct cell core[SIZE_CORE];
 	prgA.size=0;
 	prgB.size=0; 
 	mutate_change(&prgA, 0, 0); // to force a program of size 1 at least 
@@ -67,18 +82,21 @@ int run(int argc, char *argv[]) {
 	int mid_dis=0; // some midtime display from time to time
 	int count_mutations;
 	int generation=0;
-	while (n<10) {
+	while (n<100) {
 		n++;
-		win_A=0;
-		count=0; 
-		percent=0; 
 		count_mutations=0;
+		percent=0; 
 		while (percent < min_percent) {
-			for (i=0;i<count_rounds;i++) {
-				init_core();
+			win_A=0;
+			count=0; 
+			for (i=0;i<count_rounds;i++) { // n rounds 
+				init_core(core);
 				get_random(&cursor_A, &cursor_B, &prgA, &prgB); 
-				install_program(&prgA, cursor_A, 1); 
-				install_program(&prgB, cursor_B, 2);
+				install_program(core, &prgA, cursor_A, 1); 
+				install_program(core, &prgB, cursor_B, 2);
+
+				// run as a thread, and for each, get outcome
+
 				outcome=run_fight(&cursor_A, &cursor_B); 
 				count++;
 				switch (outcome) {
@@ -87,10 +105,19 @@ int run(int argc, char *argv[]) {
 					case 102: { win_B++; } break;
 					default: { printf("error #%d\n", outcome); } break;
 				} 
+				//printf("o=%d ", outcome);
 			}
+			//printf("\n");
 			percent=win_A*1.0/count*100;
-			if (percent<min_percent) { 
-				if (count_mutations>max_mutations_before_reset) {
+			if (percent<min_percent) { // if still losing
+				/*mid_dis++;
+				if (mid_dis>10000) {
+					printf("win %0.0f%% of fights\n", percent);
+					printf("generation %d\n", generation);
+					print_listing_limit(&prgA, 19);
+					mid_dis=0;
+				}****/
+				if (count_mutations>max_mutations_before_reset) { // reset if dna too far away from the opponent
 					//printf("clean that source\n");
 					//print_listing(&prgA);
 					count_mutations=0; 
@@ -118,20 +145,10 @@ int run(int argc, char *argv[]) {
 					return 99;
 				}
 			} 
-			mid_dis++;
-			if (mid_dis>1000) {
-				printf("generation %d\n", generation);
-				print_listing_limit(&prgA, 19);
-				mid_dis=0;
-			} 
 		} 
 		generation++;
-		printf("win %0.0f%% of fights.", percent);
-		printf("\n");
-		print_listing(&prgA);
-		// print something
-		// copy A to B
-		// redo the same thing
+		printf("generation %d, win %0.0f%% of fights\n", generation, percent);
+		print_two_listing(&prgA, &prgB);
 		for (i=0;i<prgA.size;i++) {
 			prgB.lines[i].type=prgA.lines[i].type;
 			prgB.lines[i].mod_A=prgA.lines[i].mod_A;
@@ -147,7 +164,9 @@ int main(int argc, char *argv[]) {
 	randomize();
 	debug_level=0;
 	if (debug_level==1) {
+		test();
 		test2();
+		test3();
 		return 0;
 	}
 	run(argc, argv);

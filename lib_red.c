@@ -1,4 +1,4 @@
-#include <execinfo.h>
+# // negative numbers ok for addressesinclude <execinfo.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +17,7 @@ int get_term_size() {
 	screen_height=w.ws_row;
 }
 
-int init_line(struct s_red_line* line, int type, int mod_A, int mod_B, int adr_A, int adr_B) {
+int init_line(struct s_red_line *line, int type, int mod_A, int mod_B, int adr_A, int adr_B) {
 	line->type=type;
 	line->mod_A=mod_A;
 	line->mod_B=mod_B;
@@ -25,7 +25,7 @@ int init_line(struct s_red_line* line, int type, int mod_A, int mod_B, int adr_A
 	line->adr_B=adr_B;
 }
 
-int print_red_line(struct s_red_line* s) {
+int print_red_line(struct s_red_line *s) {
 	//printf("%d %d %d %d %d\n", s->type, s->mod_A, s->mod_B, s->adr_A, s->adr_B); // only to debug
 	char type[4]; // instruction
 	char mod_A; // type of address for A
@@ -53,7 +53,7 @@ int print_red_line(struct s_red_line* s) {
 	printf("%s %c%d, %c%d", type, mod_A, s->adr_A, mod_B, s->adr_B);
 }
 
-int print_short_type(struct s_red_line* s) {
+int print_short_type(struct s_red_line *s) {
 	switch (s->type) {
 		case -1 : { printf(" "); } break; // cannot happen, default value in mem is DAT #0,#0
 		case 0  : { printf("."); } break;
@@ -80,7 +80,7 @@ int randomize() {
 	srand(t1.tv_usec * t1.tv_sec);
 }
 
-int display_cell(int idx) {
+int display_cell(struct cell *core, int idx) { // can i pass an array that way ?
 // add a paramter to underline the instruction
 	locate_cell(idx);
 	int bgcolor, owner;
@@ -93,30 +93,28 @@ int display_cell(int idx) {
 	printf("\033[0m"); 
 }
 
-int display_full_core() {
+int display_full_core(struct cell *core) {
 	int i;
 	for (i=0;i < SIZE_CORE; i++) {
-		display_cell(i);
+		display_cell(core, i);
 	}
 }
 
-int copy_cell(int from, int to) {
+int copy_cell(struct cell *core, int from, int to) {
 	unsigned int to_offset = to % SIZE_CORE;
 	unsigned int from_offset = from % SIZE_CORE;
 
-  memcpy(&core[to_offset], &core[from_offset], sizeof(core[to_offset]));
-	/*
+  //memcpy(&core[to_offset], &core[from_offset], sizeof(core[to_offset]));
 	core[to_offset].code.type =core[from_offset].code.type;
 	core[to_offset].code.mod_A=core[from_offset].code.mod_A;
 	core[to_offset].code.mod_B=core[from_offset].code.mod_B;
 	core[to_offset].code.adr_A=core[from_offset].code.adr_A;
 	core[to_offset].code.adr_B=core[from_offset].code.adr_B;
-	*/
-	if (display) { display_cell(to); }
+	if (display) { display_cell(core, to); }
 	return 1;
 }
 
-int copy_line(struct s_program* program, int a, int b) {
+int copy_line(struct s_program *program, int a, int b) {
 	program->lines[b].type=program->lines[a].type;
 	program->lines[b].mod_A=program->lines[a].mod_A;
 	program->lines[b].mod_B=program->lines[a].mod_B;
@@ -137,7 +135,7 @@ int locate_log(int shift) {
 	printf("\033[%d;%dH\033[2K", screen_height-2+shift, 0);
 } 
 
-int compare_two_cells(int a, int b) { 
+int compare_two_cells(struct cell *core, int a, int b) { 
 	if ((a<0) || (a>SIZE_CORE) ||
 	    (b<0) || (b>SIZE_CORE)) { return 0; }
 	return ((core[a].code.type ==core[b].code.type ) &&
@@ -147,7 +145,7 @@ int compare_two_cells(int a, int b) {
 					(core[a].code.adr_B==core[b].code.adr_B));
 }
 
-int load_prog(char filename[MAX_SIZE_SRC], struct s_program* prog) {
+int load_prog(char filename[MAX_SIZE_SRC], struct s_program *prog) {
 	FILE* in=NULL;
 	if ((in=fopen(filename, "rb")) == NULL) {
 		fprintf(stderr, "Error while opening %s\n", filename);
@@ -174,7 +172,7 @@ int load_prog(char filename[MAX_SIZE_SRC], struct s_program* prog) {
 	return i;
 }
 
-int install_program(struct s_program* prog, int to, int owner) {
+int install_program(struct cell *core, struct s_program *prog, int to, int owner) {
 	int i;
 	int dest;
 	for (i=0; i < prog->size; i++) { 
@@ -203,7 +201,7 @@ int adr(int val) {// return proper address, based on core size
 	return val;
 } 
 
-int execute(int idx, int owner) {
+int execute(struct cell *core, int idx, int owner) {
 	struct s_red_line r;
 
 	char short_name=' ';
@@ -234,12 +232,13 @@ int execute(int idx, int owner) {
 	switch (r.type) {
 		case 1: { // MOV
 			switch (r.mod_A) {
-				case 0: { A_is_adr=0; A=r.adr_A;
+				case 0: { A_is_adr=0; A=adr(r.adr_A);
 				} break;
 				case 1: { A=adr(idx+r.adr_A); } break; 
 				case 2: { A=adr(idx+r.adr_A); 
 									A=adr(idx+core[A].code.adr_B);
 				} break; 
+				default: { err=1; } break;
 			}
 			switch (r.mod_B) {
 				case 0: { err=1; } break;
@@ -248,6 +247,7 @@ int execute(int idx, int owner) {
 					B=adr(idx+r.adr_B);
 					B=adr(idx+core[B].code.adr_B);
 				} break;
+				default: { err=1; } break;
 			} 
 			if (!err) {
 				if (A_is_adr) {
@@ -255,9 +255,9 @@ int execute(int idx, int owner) {
 						locate_log(0);
 						printf("program %c, copying command at %d to %d (%d)", short_name, A, adr(B-idx), B);
 					}
-					copy_cell(A, B);
+					copy_cell(core, A, B);
 					core[B].owner=owner; // does writing a value change the ownership ? boarpf
-					if (display) { display_cell(B); }
+					if (display) { display_cell(core, B); }
 				}
 				else {
 					if (debug_level) {
@@ -266,7 +266,7 @@ int execute(int idx, int owner) {
 					}
 					core[B].code.adr_B=A; 
 					core[B].owner=owner; // does writing a value change the ownership ? boarpf
-					if (display) { display_cell(B); }
+					if (display) { display_cell(core, B); }
 				} 
 			}
 		} break;
@@ -281,6 +281,7 @@ int execute(int idx, int owner) {
 									A=adr(idx+core[A].code.adr_B);
 									A=adr(core[A].code.adr_B); 
 				} break; 
+				default: { err=1; } break;
 			}
 			switch (r.mod_B) {
 				case 0: { err=1; } break;
@@ -289,6 +290,7 @@ int execute(int idx, int owner) {
 					B=adr(r.adr_B+idx);
 					B=adr(core[B].code.adr_B);
 				} break;
+				default: { err=1; } break;
 			} 
 			if (!err) { 
 				B=adr(B+idx);
@@ -317,6 +319,7 @@ int execute(int idx, int owner) {
 					B=adr(idx+r.adr_B);
 					B=adr(idx+core[B].code.adr_B);
 				} break;
+				default: { err=1; } break;
 			} 
 			if (!err) {
 				jump=1;
@@ -338,6 +341,7 @@ int execute(int idx, int owner) {
 									A=adr(idx+core[A].code.adr_B);
 									A=adr(core[A].code.adr_B); 
 				} break; 
+				default: { err=1; } break;
 			}
 			switch (r.mod_B) {
 				case 0: { err=1; } break;
@@ -370,6 +374,7 @@ int execute(int idx, int owner) {
 					A=adr(r.adr_A+idx);
 					A=adr(core[A].code.adr_A);
 				} break;
+				default: { err=1; } break;
 			} 
 			switch (r.mod_B) {
 				case 0: { err=1; } break;
@@ -378,6 +383,7 @@ int execute(int idx, int owner) {
 					B=adr(idx+r.adr_B);
 					B=adr(idx+core[B].code.adr_B);
 				} break;
+				default: { err=1; } break;
 			} 
 			if (!err) {
 				A=adr(idx+A);
@@ -412,6 +418,7 @@ int execute(int idx, int owner) {
 					A=adr(idx+core[A].code.adr_B);
 					A=core[A].code.adr_B;
 				} break; 
+				default: { err=1; } break;
 			}
 			switch (r.mod_B) {
 				case 0: { B=r.adr_B;
@@ -425,6 +432,7 @@ int execute(int idx, int owner) {
 					B=adr(idx+core[B].code.adr_B);
 					B=core[B].code.adr_B;
 				} break; 
+				default: { err=1; } break;
 			}
 			if (A==B) {
 				if (debug_level) {
@@ -456,7 +464,7 @@ int execute(int idx, int owner) {
 	return idx;
 }
 
-int get_random(int* cursor_A, int* cursor_B, struct s_program* prog_A, struct s_program* prog_B) {
+int get_random(int *cursor_A, int *cursor_B, struct s_program *prog_A, struct s_program *prog_B) {
 	*cursor_A=rand() % SIZE_CORE;
 	int left;
 	left=SIZE_CORE - prog_A->size - prog_B->size;
@@ -467,9 +475,10 @@ int get_random(int* cursor_A, int* cursor_B, struct s_program* prog_A, struct s_
 	return 1;
 }
 
-int init_core() {
+int init_core(struct cell *core) {
 	int i;
 	for (i=0;i<SIZE_CORE;i++) {
+		core[i].owner=0;
 		core[i].code.type=0; // at first, we write DAT #0, #0 everywhere
 		core[i].code.mod_A=0;
 		core[i].code.mod_B=0;
@@ -478,14 +487,14 @@ int init_core() {
 	} 
 } 
 
-int display_core_dump(int cursor_A, int cursor_B) {
+int display_core_dump(struct cell *core, int cursor_A, int cursor_B) {
 	int i;
 	int dotwritten=0;
 	printf("\n------core dump -----\n");
 	i=0;
 	int repetition=0; // number of repetitions of the last instruction.
 	while (i <= SIZE_CORE) { 
-		if (compare_two_cells(i, i-1)) { repetition++; }
+		if (compare_two_cells(core, i, i-1)) { repetition++; }
 		else { 
 			if (repetition > 0) { printf("< %d times>\n", repetition); repetition=0; }
 			if (i < SIZE_CORE) { 
@@ -503,14 +512,14 @@ int display_core_dump(int cursor_A, int cursor_B) {
 	}
 } 
 
-int run_fight(int* cursor_A, int* cursor_B) { // cursor values are modified
+int run_fight(struct cell *core, int *cursor_A, int *cursor_B) { // cursor values are modified
 	int i, tmp_A, tmp_B;
 	tmp_A=*cursor_A;
 	tmp_B=*cursor_B;
 
 	if (display) {
 		printf("\033[2J");
-		display_full_core(); 
+		display_full_core(core); 
 		printf("\033[%u;%uH", screen_height - 1,0);
 	}
 
@@ -519,9 +528,9 @@ int run_fight(int* cursor_A, int* cursor_B) { // cursor values are modified
 	int max_run = SIZE_CORE * 2;
 
 	for (i=0;i<max_run;i++) {
-		tmp_A=execute(*cursor_A, 1); // if -1, then lose
+		tmp_A=execute(core, *cursor_A, 1); // if -1, then lose
 		if (display) { pause_locate(*cursor_A); };
-		tmp_B=execute(*cursor_B, 2); // if -1, then lose
+		tmp_B=execute(core, *cursor_B, 2); // if -1, then lose
 		if (display) { pause_locate(*cursor_B); };
 
 		if ((tmp_A==-1) && (tmp_B==-1)) {
@@ -546,7 +555,7 @@ int run_fight(int* cursor_A, int* cursor_B) { // cursor values are modified
 	return outcome;
 }
 
-int print_listing_limit(struct s_program* prog, int limit) {
+int print_listing_limit(struct s_program *prog, int limit) {
 	int more=0;
 	int m;
 	m=prog->size;
@@ -559,7 +568,7 @@ int print_listing_limit(struct s_program* prog, int limit) {
 	if (more) { printf("...\n"); }
 }
 
-int print_listing(struct s_program* prog) {
+int print_listing(struct s_program *prog) {
 	for (int i=0;i<prog->size;i++) {
 		printf("%d: ", i);
 		print_red_line(&prog->lines[i]);
@@ -567,7 +576,21 @@ int print_listing(struct s_program* prog) {
 	}
 }
 
-int mutate_change(struct s_program* program, int force_append, int big_mutate) { // 1 force append
+int print_two_listing(struct s_program *pa, struct s_program *pb) {
+	int s;
+	s=pa->size;
+	if (s<pb->size) { s=pb->size; }
+	for (int i=0;i<s;i++) {
+		printf("%d: ", i);
+		if (i<pa->size) { print_red_line(&pa->lines[i]); }
+		printf("\033[30G");
+		if (i<pb->size) { print_red_line(&pb->lines[i]); }
+		printf("\n");
+	}
+}
+
+
+int mutate_change(struct s_program *program, int force_append, int big_mutate) { // 1 force append
 	int idx;
 	if ((force_append) || (program->size==0)) {
 		program->size++;
@@ -576,7 +599,7 @@ int mutate_change(struct s_program* program, int force_append, int big_mutate) {
 	} else { idx=rand() % program->size; }
 
 	int field=random() % 5; 
-	int* pfield;
+	int *pfield;
 	int max_val; // max value + 1, will be used as %
 	switch (field) {
 		case 0: {
@@ -584,19 +607,19 @@ int mutate_change(struct s_program* program, int force_append, int big_mutate) {
 			pfield=&(program->lines[idx].type);
 		} break;
 		case 1: {
-			max_val=3;
+			max_val=2;
 			pfield=&program->lines[idx].mod_A; 
 		} break; 
 		case 2: {
-			max_val=3;
+			max_val=2;
 			pfield=&program->lines[idx].mod_B; 
 		} break;
 		case 3: {
-			max_val=SIZE_CORE;
+			max_val=SIZE_CORE/10;
 			pfield=&program->lines[idx].adr_A; 
 		} break;
 		case 4: {
-			max_val=SIZE_CORE;
+			max_val=SIZE_CORE/10;
 			pfield=&program->lines[idx].adr_B; 
 		} break;
 	} 
@@ -605,12 +628,14 @@ int mutate_change(struct s_program* program, int force_append, int big_mutate) {
 	int r=10; // range of change
 	if (big_mutate) { r=1000; }
 	*pfield=random() % r - (r/2) + *pfield; 
-	while (*pfield < 0) { *pfield=*pfield+max_val; }
+	if (field<3) {
+		while (*pfield < 0) { *pfield=*pfield+max_val; }
+	} // negative numbers ok for addresses
 	*pfield=*pfield % max_val; 
 	return idx;
 }
 
-int mutate_duplicate_location(struct s_program* program, int a, int b, int pos) {
+int mutate_duplicate_location(struct s_program *program, int a, int b, int pos) {
 	// we pick a and b (intervert if needed)
 	// then we insert, by moving one from x steps to the end. discard lines if outside max
 	
@@ -651,7 +676,7 @@ int mutate_duplicate_location(struct s_program* program, int a, int b, int pos) 
 	}
 }
 
-int mutate_duplicate(struct s_program* program) {
+int mutate_duplicate(struct s_program *program) {
 	if (program->size==0) { return 0; }
 	int a=random() % (program->size);
 	int b=random() % program->size + 1; // b excluded from copy
@@ -665,7 +690,7 @@ int mutate_duplicate(struct s_program* program) {
 	return mutate_duplicate_location(program, a, b, pos);
 }
 
-int mutate_remove(struct s_program* program) {
+int mutate_remove(struct s_program *program) {
 	if (program->size<=1) { return 0; } 
 	int max_size=program->size/10;
 	if (max_size==0) { return 0; } 

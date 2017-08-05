@@ -1,5 +1,5 @@
-#define SIZE_CORE 4096
-#define MAX_SIZE_SRC 1024
+#define SIZE_CORE 128
+#define MAX_SIZE_SRC 50 // not less than 30 (or so), because some tests force writing more
 
 struct s_red_line {
 	signed int type; /*
@@ -37,10 +37,7 @@ char filename_prog_A[1024];
 char filename_prog_B[1024];
 short debug_level;
 short display; // 1 true or 0 false
-struct cell core[SIZE_CORE];
 int screen_width;
 int screen_height; 
-struct s_program prog_A; // araray of struct s_red_line
-struct s_program prog_B; // araray of struct s_red_line
 
 

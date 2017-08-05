@@ -202,6 +202,24 @@ i=6.
 
 
 
-save and load for the pool of fighters. save and load to /tmp/blah (create dir if doesn't exists), with a loop for all
+when i'll have somethg that looks promising : save and load for the pool of fighters. save and load to /tmp/blah (create dir if doesn't exists), with a loop for all
 i save to /tmp/, up to the user to backup them (for now)
 note : when saving, save two versions of the program : cw and red
+
+make some threads to do the n fights
+meaning that i should get rid of some global var, like the core. that can be annoying.
+
+
+
+int main()
+{
+    pthread_t tid[2];
+    for (int i = 0; i < 2; i++) {
+        pthread_create(&tid[i], NULL, routine, NULL);
+    }
+    for (int i = 0; i < 2; i++)
+       pthread_join(tid[i], NULL);
+    return 0;
+}
+
+

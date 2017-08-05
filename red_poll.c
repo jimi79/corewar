@@ -73,9 +73,8 @@ int main(int argc, char *argv[]) {
 		mutate_change(&programs[i], 0, 0); // to force a program of size 1 at least
 	}
 
-	// we initialize both programs empty
-
 	int cursor_A, cursor_B;
+	struct cell core[SIZE_CORE]; // that has to be local 
 
 	get_term_size();
 	int outcome;
@@ -96,11 +95,11 @@ int main(int argc, char *argv[]) {
 				for (j=0; j<count_rounds-1;j++) {
 					for (l=0; l<count_rounds; l++) {
 						opp=(i+j) % count_fighters;
-						init_core();
+						init_core(core);
 						get_random(&cursor_A, &cursor_B, &programs[i], &programs[opp]); 
-						install_program(&programs[i], cursor_A, 1); 
-						install_program(&programs[opp], cursor_B, 2);
-						outcome=run_fight(&cursor_A, &cursor_B); 
+						install_program(core, &programs[i], cursor_A, 1); 
+						install_program(core, &programs[opp], cursor_B, 2);
+						outcome=run_fight(core, &cursor_A, &cursor_B); 
 						count++;
 						switch (outcome) {
 							case 100: { } break;
