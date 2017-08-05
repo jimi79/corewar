@@ -1,18 +1,18 @@
 #include "var_red.h" // -- functions
 
 int adr(int val);
-int copy_cell(struct cell *core, int from, int to);
+int copy_cell(struct s_core* core, int from, int to);
 int copy_line(struct s_program* program, int a, int b);
-int display_cell(struct cell *core, int idx);
-int display_core_dump(struct cell *core, int cursor_A, int cursor_B);
-int display_full_core(struct cell *core);
-int execute(struct cell *core, int idx, int owner);
+int display_cell(struct s_core* core, int idx);
+int display_core_dump(struct s_core* core, int cursor_A, int cursor_B);
+int display_full_core(struct s_core* core);
+int execute(struct s_core* core, int idx, int owner);
 int get_random(int* cursor_A, int* cursor_B, struct s_program* prog_A, struct s_program* prog_B);
 int get_term_size();
 int get_val(int method, int address);
-int init_core(struct cell *core);
+int init_core(struct s_core* core);
 int init_line(struct s_red_line* line, int type, int mod_A, int mod_B, int adr_A, int adr_B);
-int install_program(struct cell *core, struct s_program* prog, int to, int owner);
+int install_program(struct s_core* core, struct s_program* prog, int to, int owner);
 int load_prog(char filename[MAX_SIZE_SRC], struct s_program* prog);
 int locate_cell(int idx);
 int locate_log(int shift);

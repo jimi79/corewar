@@ -1,3 +1,4 @@
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +8,23 @@
 #include "lib_red.h"
 
 int verbose=0; // debugging
+
+struct s_fight_params {
+	struct s_core core;
+	// i do not store the program because it doesn't change
+	int cursor_A;
+	int cursor_B;
+	int res;
+};
+
+void *run_fight_thread(void *p) {
+	struct s_fight_params* params=p;
+	//printf("c2=%d\n", params->cursor_A);
+	//params->res=testt3   (&params->core, &params->cursor_A, &params->cursor_B);
+	params->res=run_fight(&params->core, &params->cursor_A, &params->cursor_B);
+	//testt1(params->cursor_A);
+	//testt2(&params->cursor_A);
+};
 
 int test3() {
 	struct s_program A; 
@@ -67,7 +85,7 @@ int run(int argc, char *argv[]) {
 	int max_mutations_before_reset=100; // number of mutations before we restart from the first one and try another tree
 	struct s_program prgA;
 	struct s_program prgB; 
-	struct cell core[SIZE_CORE];
+	struct s_core core;
 	prgA.size=0;
 	prgB.size=0; 
 	mutate_change(&prgA, 0, 0); // to force a program of size 1 at least 
@@ -82,33 +100,45 @@ int run(int argc, char *argv[]) {
 	int mid_dis=0; // some midtime display from time to time
 	int count_mutations;
 	int generation=0;
-	while (n<100) {
+
+	pthread_t th[count_rounds]; 
+	struct s_fight_params params[count_rounds];
+	void *status=0;
+
+	while (1) {
 		n++;
 		count_mutations=0;
 		percent=0; 
 		while (percent < min_percent) {
 			win_A=0;
 			count=0; 
+
 			for (i=0;i<count_rounds;i++) { // n rounds 
-				init_core(core);
-				get_random(&cursor_A, &cursor_B, &prgA, &prgB); 
-				install_program(core, &prgA, cursor_A, 1); 
-				install_program(core, &prgB, cursor_B, 2);
-
-				// run as a thread, and for each, get outcome
-
-				outcome=run_fight(&cursor_A, &cursor_B); 
+				init_core(&params[i].core);
+				get_random(&params[i].cursor_A, &params[i].cursor_B, &prgA, &prgB); 
+				install_program(&params[i].core, &prgA, params[i].cursor_A, 1); 
+				install_program(&params[i].core, &prgB, params[i].cursor_B, 1); 
+				pthread_create(&th[i], NULL, run_fight_thread, (void*) &params[i]); 
 				count++;
+			}
+
+			for (i=0;i<count_rounds;i++) { // n rounds 
+				pthread_join(th[i], &status);
+			} 
+
+			for (i=0;i<count_rounds;i++) { // n rounds 
+				outcome=params[i].res;
 				switch (outcome) {
 					case 100: { } break;
 					case 101: { win_A++; } break;
 					case 102: { win_B++; } break;
 					default: { printf("error #%d\n", outcome); } break;
 				} 
-				//printf("o=%d ", outcome);
+	
 			}
 			//printf("\n");
 			percent=win_A*1.0/count*100;
+			percent=percent+100*debug_level; // TODO always win so don't loop endlessly if debugging
 			if (percent<min_percent) { // if still losing
 				/*mid_dis++;
 				if (mid_dis>10000) {

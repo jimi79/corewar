@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 	signal(SIGSEGV, handler_sigsegv);   // install our handler 
 	randomize(); 
 	struct s_program prog_A, prog_B; 
-	struct cell core[SIZE_CORE]; // that has to be local 
+	struct s_core core; // that has to be local 
 	if (!parse_parameters(argc, argv)) {
 		return 1;
 	} 
@@ -88,14 +88,14 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	int cursor_A, cursor_B;
-	init_core(core);
+	init_core(&core);
 
 	get_random(&cursor_A, &cursor_B, &prog_A, &prog_B);
-	install_program(core, &prog_A, cursor_A, 1); // owner limited between 0 (none) 1 and 2, because it affects the color on the board, which i choose properly
-	install_program(core, &prog_B, cursor_B, 2);
+	install_program(&core, &prog_A, cursor_A, 1); // owner limited between 0 (none) 1 and 2, because it affects the color on the board, which i choose properly
+	install_program(&core, &prog_B, cursor_B, 2);
 	
 	int outcome;
-	outcome=run_fight(core, &cursor_A, &cursor_B);
+	outcome=run_fight(&core, &cursor_A, &cursor_B);
 
 	if (display) {
 		switch (outcome) {
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
 	} 
 
 	if (debug_level) {
-		display_core_dump(core, cursor_A, cursor_B);
+		display_core_dump(&core, cursor_A, cursor_B);
 	} 
 	// output start location to find why i segfault from time to time
 	// do that with a debug level

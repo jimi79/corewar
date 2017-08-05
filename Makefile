@@ -1,6 +1,6 @@
 BIN=./bin
 SOURCE=./
-CFLAGS?=-ggdb
+CFLAGS?=-ggdb -pthread
 LIBS=lib_red.c 
 
 LIST=$(BIN)/red_poll $(BIN)/red_duelling $(BIN)/red_engine

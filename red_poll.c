@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	int cursor_A, cursor_B;
-	struct cell core[SIZE_CORE]; // that has to be local 
+	struct s_core core; 
 
 	get_term_size();
 	int outcome;
@@ -95,11 +95,11 @@ int main(int argc, char *argv[]) {
 				for (j=0; j<count_rounds-1;j++) {
 					for (l=0; l<count_rounds; l++) {
 						opp=(i+j) % count_fighters;
-						init_core(core);
+						init_core(&core);
 						get_random(&cursor_A, &cursor_B, &programs[i], &programs[opp]); 
-						install_program(core, &programs[i], cursor_A, 1); 
-						install_program(core, &programs[opp], cursor_B, 2);
-						outcome=run_fight(core, &cursor_A, &cursor_B); 
+						install_program(&core, &programs[i], cursor_A, 1); 
+						install_program(&core, &programs[opp], cursor_B, 2);
+						outcome=run_fight(&core, &cursor_A, &cursor_B); 
 						count++;
 						switch (outcome) {
 							case 100: { } break;

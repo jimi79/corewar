@@ -80,37 +80,36 @@ int randomize() {
 	srand(t1.tv_usec * t1.tv_sec);
 }
 
-int display_cell(struct cell *core, int idx) { // can i pass an array that way ?
+int display_cell(struct s_core* core, int idx) { // can i pass an array that way ?
 // add a paramter to underline the instruction
 	locate_cell(idx);
 	int bgcolor, owner;
-	owner=core[idx].owner;
+	owner=core->cells[idx].owner;
 	if (owner==0) { bgcolor=0; }
 	if (owner==1) { bgcolor=41; }
 	if (owner==2) { bgcolor=44; }
 	printf("\033[%um", bgcolor); 
-	print_short_type(&core[idx].code);
+	print_short_type(&core->cells[idx].code);
 	printf("\033[0m"); 
 }
 
-int display_full_core(struct cell *core) {
+int display_full_core(struct s_core* core) {
 	int i;
 	for (i=0;i < SIZE_CORE; i++) {
 		display_cell(core, i);
 	}
 }
 
-int copy_cell(struct cell *core, int from, int to) {
+int copy_cell(struct s_core* core, int from, int to) {
 	unsigned int to_offset = to % SIZE_CORE;
 	unsigned int from_offset = from % SIZE_CORE;
 
-  //memcpy(&core[to_offset], &core[from_offset], sizeof(core[to_offset]));
-	core[to_offset].code.type =core[from_offset].code.type;
-	core[to_offset].code.mod_A=core[from_offset].code.mod_A;
-	core[to_offset].code.mod_B=core[from_offset].code.mod_B;
-	core[to_offset].code.adr_A=core[from_offset].code.adr_A;
-	core[to_offset].code.adr_B=core[from_offset].code.adr_B;
-	if (display) { display_cell(core, to); }
+  //memcpy(&core[to_offset], &core[from_offset], sizeof(core[to_offset])); // TODO try that someday
+	core->cells[to_offset].code.type =core->cells[from_offset].code.type;
+	core->cells[to_offset].code.mod_A=core->cells[from_offset].code.mod_A;
+	core->cells[to_offset].code.mod_B=core->cells[from_offset].code.mod_B;
+	core->cells[to_offset].code.adr_A=core->cells[from_offset].code.adr_A;
+	core->cells[to_offset].code.adr_B=core->cells[from_offset].code.adr_B;
 	return 1;
 }
 
@@ -135,14 +134,14 @@ int locate_log(int shift) {
 	printf("\033[%d;%dH\033[2K", screen_height-2+shift, 0);
 } 
 
-int compare_two_cells(struct cell *core, int a, int b) { 
+int compare_two_cells(struct s_core* core, int a, int b) { 
 	if ((a<0) || (a>SIZE_CORE) ||
 	    (b<0) || (b>SIZE_CORE)) { return 0; }
-	return ((core[a].code.type ==core[b].code.type ) &&
-					(core[a].code.mod_A==core[b].code.mod_A) &&
-					(core[a].code.mod_B==core[b].code.mod_B) &&
-					(core[a].code.adr_A==core[b].code.adr_A) &&
-					(core[a].code.adr_B==core[b].code.adr_B));
+	return ((core->cells[a].code.type ==core->cells[b].code.type ) &&
+					(core->cells[a].code.mod_A==core->cells[b].code.mod_A) &&
+					(core->cells[a].code.mod_B==core->cells[b].code.mod_B) &&
+					(core->cells[a].code.adr_A==core->cells[b].code.adr_A) &&
+					(core->cells[a].code.adr_B==core->cells[b].code.adr_B));
 }
 
 int load_prog(char filename[MAX_SIZE_SRC], struct s_program *prog) {
@@ -172,17 +171,17 @@ int load_prog(char filename[MAX_SIZE_SRC], struct s_program *prog) {
 	return i;
 }
 
-int install_program(struct cell *core, struct s_program *prog, int to, int owner) {
+int install_program(struct s_core* core, struct s_program *prog, int to, int owner) {
 	int i;
 	int dest;
 	for (i=0; i < prog->size; i++) { 
 		dest=(to + i) % SIZE_CORE;
-		core[dest].code.type =prog->lines[i].type;
-		core[dest].code.mod_A=prog->lines[i].mod_A; 
-		core[dest].code.mod_B=prog->lines[i].mod_B; 
-		core[dest].code.adr_A=prog->lines[i].adr_A; 
-		core[dest].code.adr_B=prog->lines[i].adr_B; 
-		core[dest].owner=owner;
+		core->cells[dest].code.type =prog->lines[i].type;
+		core->cells[dest].code.mod_A=prog->lines[i].mod_A; 
+		core->cells[dest].code.mod_B=prog->lines[i].mod_B; 
+		core->cells[dest].code.adr_A=prog->lines[i].adr_A; 
+		core->cells[dest].code.adr_B=prog->lines[i].adr_B; 
+		core->cells[dest].owner=owner;
 	}
 } 
 
@@ -201,7 +200,7 @@ int adr(int val) {// return proper address, based on core size
 	return val;
 } 
 
-int execute(struct cell *core, int idx, int owner) {
+int execute(struct s_core* core, int idx, int owner) {
 	struct s_red_line r;
 
 	char short_name=' ';
@@ -213,7 +212,7 @@ int execute(struct cell *core, int idx, int owner) {
 	int err=0; 
 	int jump=0; // if 1, then we don't increment cursor location
 
-	r=core[idx].code;
+	r=core->cells[idx].code;
 
 	if (debug_level) { 
 		locate_log(-1);
@@ -236,7 +235,7 @@ int execute(struct cell *core, int idx, int owner) {
 				} break;
 				case 1: { A=adr(idx+r.adr_A); } break; 
 				case 2: { A=adr(idx+r.adr_A); 
-									A=adr(idx+core[A].code.adr_B);
+									A=adr(idx+core->cells[A].code.adr_B);
 				} break; 
 				default: { err=1; } break;
 			}
@@ -245,7 +244,7 @@ int execute(struct cell *core, int idx, int owner) {
 				case 1: { B=adr(idx+r.adr_B); } break;
 				case 2: {
 					B=adr(idx+r.adr_B);
-					B=adr(idx+core[B].code.adr_B);
+					B=adr(idx+core->cells[B].code.adr_B);
 				} break;
 				default: { err=1; } break;
 			} 
@@ -256,7 +255,7 @@ int execute(struct cell *core, int idx, int owner) {
 						printf("program %c, copying command at %d to %d (%d)", short_name, A, adr(B-idx), B);
 					}
 					copy_cell(core, A, B);
-					core[B].owner=owner; // does writing a value change the ownership ? boarpf
+					core->cells[B].owner=owner; // does writing a value change the ownership ? boarpf
 					if (display) { display_cell(core, B); }
 				}
 				else {
@@ -264,8 +263,8 @@ int execute(struct cell *core, int idx, int owner) {
 						locate_log(0);
 						printf("program %c, writing value of B %d in %d (%d)", short_name, A, adr(B-idx), B);
 					}
-					core[B].code.adr_B=A; 
-					core[B].owner=owner; // does writing a value change the ownership ? boarpf
+					core->cells[B].code.adr_B=A; 
+					core->cells[B].owner=owner; // does writing a value change the ownership ? boarpf
 					if (display) { display_cell(core, B); }
 				} 
 			}
@@ -275,11 +274,11 @@ int execute(struct cell *core, int idx, int owner) {
 				case 0: { A=r.adr_A;
 				} break;
 				case 1: { A=adr(idx+r.adr_A); 
-									A=core[A].code.adr_B; 
+									A=core->cells[A].code.adr_B; 
 				} break; 
 				case 2: { A=adr(idx+r.adr_A); 
-									A=adr(idx+core[A].code.adr_B);
-									A=adr(core[A].code.adr_B); 
+									A=adr(idx+core->cells[A].code.adr_B);
+									A=adr(core->cells[A].code.adr_B); 
 				} break; 
 				default: { err=1; } break;
 			}
@@ -288,7 +287,7 @@ int execute(struct cell *core, int idx, int owner) {
 				case 1: { B=r.adr_B; } break;
 				case 2: { 
 					B=adr(r.adr_B+idx);
-					B=adr(core[B].code.adr_B);
+					B=adr(core->cells[B].code.adr_B);
 				} break;
 				default: { err=1; } break;
 			} 
@@ -296,17 +295,17 @@ int execute(struct cell *core, int idx, int owner) {
 				B=adr(B+idx);
 
 				if (r.type==2) {
-					core[B].code.adr_B=adr(core[B].code.adr_B+A);
+					core->cells[B].code.adr_B=adr(core->cells[B].code.adr_B+A);
 					if (debug_level) {
 						locate_log(0);
-						printf("program %c, adding value %d in %d (%d) -> %d", short_name, A, adr(B-idx), B, core[B].code.adr_B);
+						printf("program %c, adding value %d in %d (%d) -> %d", short_name, A, adr(B-idx), B, core->cells[B].code.adr_B);
 					}
 				}
 				if (r.type==3) {
-					core[B].code.adr_B=adr(core[B].code.adr_B-A);
+					core->cells[B].code.adr_B=adr(core->cells[B].code.adr_B-A);
 					if (debug_level) {
 						locate_log(0);
-						printf("program %c, substracting value %d in %d (%d) -> %d", short_name, A, adr(B-idx), B, core[B].code.adr_B);
+						printf("program %c, substracting value %d in %d (%d) -> %d", short_name, A, adr(B-idx), B, core->cells[B].code.adr_B);
 					} 
 				}
 			}
@@ -317,7 +316,7 @@ int execute(struct cell *core, int idx, int owner) {
 				case 1: { B=adr(idx+r.adr_B); } break;
 				case 2: {
 					B=adr(idx+r.adr_B);
-					B=adr(idx+core[B].code.adr_B);
+					B=adr(idx+core->cells[B].code.adr_B);
 				} break;
 				default: { err=1; } break;
 			} 
@@ -335,11 +334,11 @@ int execute(struct cell *core, int idx, int owner) {
 				case 0: { A=r.adr_A;
 				} break;
 				case 1: { A=adr(idx+r.adr_A); 
-									A=adr(core[A].code.adr_B); 
+									A=adr(core->cells[A].code.adr_B); 
 				} break; 
 				case 2: { A=adr(idx+r.adr_A); 
-									A=adr(idx+core[A].code.adr_B);
-									A=adr(core[A].code.adr_B); 
+									A=adr(idx+core->cells[A].code.adr_B);
+									A=adr(core->cells[A].code.adr_B); 
 				} break; 
 				default: { err=1; } break;
 			}
@@ -348,7 +347,7 @@ int execute(struct cell *core, int idx, int owner) {
 				case 1: { B=r.adr_B; } break;
 				case 2: { 
 					B=adr(r.adr_B+idx);
-					B=core[B].code.adr_B;
+					B=core->cells[B].code.adr_B;
 				} break;
 			} 
 			if (A==0) {
@@ -372,7 +371,7 @@ int execute(struct cell *core, int idx, int owner) {
 				case 1: { A=r.adr_A; } break;
 				case 2: { 
 					A=adr(r.adr_A+idx);
-					A=adr(core[A].code.adr_A);
+					A=adr(core->cells[A].code.adr_A);
 				} break;
 				default: { err=1; } break;
 			} 
@@ -381,14 +380,14 @@ int execute(struct cell *core, int idx, int owner) {
 				case 1: { B=adr(idx+r.adr_B); } break;
 				case 2: {
 					B=adr(idx+r.adr_B);
-					B=adr(idx+core[B].code.adr_B);
+					B=adr(idx+core->cells[B].code.adr_B);
 				} break;
 				default: { err=1; } break;
 			} 
 			if (!err) {
 				A=adr(idx+A);
-				core[A].code.adr_B-=1;
-				A=core[A].code.adr_B;
+				core->cells[A].code.adr_B-=1;
+				A=core->cells[A].code.adr_B;
 				if (A==0) {
 					if (debug_level) {
 						locate_log(0);
@@ -411,12 +410,12 @@ int execute(struct cell *core, int idx, int owner) {
 				} break;
 				case 1: {
 					A=adr(idx+r.adr_A); 
-					A=core[A].code.adr_B;
+					A=core->cells[A].code.adr_B;
 				} break; 
 				case 2: {
 					A=adr(idx+r.adr_A); 
-					A=adr(idx+core[A].code.adr_B);
-					A=core[A].code.adr_B;
+					A=adr(idx+core->cells[A].code.adr_B);
+					A=core->cells[A].code.adr_B;
 				} break; 
 				default: { err=1; } break;
 			}
@@ -425,12 +424,12 @@ int execute(struct cell *core, int idx, int owner) {
 				} break;
 				case 1: {
 					B=adr(idx+r.adr_B); 
-					B=core[B].code.adr_B;
+					B=core->cells[B].code.adr_B;
 				} break; 
 				case 2: {
 					B=adr(idx+r.adr_B); 
-					B=adr(idx+core[B].code.adr_B);
-					B=core[B].code.adr_B;
+					B=adr(idx+core->cells[B].code.adr_B);
+					B=core->cells[B].code.adr_B;
 				} break; 
 				default: { err=1; } break;
 			}
@@ -475,19 +474,19 @@ int get_random(int *cursor_A, int *cursor_B, struct s_program *prog_A, struct s_
 	return 1;
 }
 
-int init_core(struct cell *core) {
+int init_core(struct s_core* core) {
 	int i;
 	for (i=0;i<SIZE_CORE;i++) {
-		core[i].owner=0;
-		core[i].code.type=0; // at first, we write DAT #0, #0 everywhere
-		core[i].code.mod_A=0;
-		core[i].code.mod_B=0;
-		core[i].code.adr_A=0;
-		core[i].code.adr_B=0;
+		core->cells[i].owner=0;
+		core->cells[i].code.type=0; // at first, we write DAT #0, #0 everywhere
+		core->cells[i].code.mod_A=0;
+		core->cells[i].code.mod_B=0;
+		core->cells[i].code.adr_A=0;
+		core->cells[i].code.adr_B=0;
 	} 
 } 
 
-int display_core_dump(struct cell *core, int cursor_A, int cursor_B) {
+int display_core_dump(struct s_core* core, int cursor_A, int cursor_B) {
 	int i;
 	int dotwritten=0;
 	printf("\n------core dump -----\n");
@@ -498,7 +497,7 @@ int display_core_dump(struct cell *core, int cursor_A, int cursor_B) {
 		else { 
 			if (repetition > 0) { printf("< %d times>\n", repetition); repetition=0; }
 			if (i < SIZE_CORE) { 
-				print_red_line(&core[i].code);
+				print_red_line(&core->cells[i].code);
 				if (i==cursor_A) {
 					 printf(" <--- cursor A");
 				};
@@ -512,7 +511,7 @@ int display_core_dump(struct cell *core, int cursor_A, int cursor_B) {
 	}
 } 
 
-int run_fight(struct cell *core, int *cursor_A, int *cursor_B) { // cursor values are modified
+int run_fight(struct s_core* core, int *cursor_A, int *cursor_B) { // cursor values are modified
 	int i, tmp_A, tmp_B;
 	tmp_A=*cursor_A;
 	tmp_B=*cursor_B;
