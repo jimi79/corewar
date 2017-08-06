@@ -2,7 +2,7 @@ import struct
 import re
 
 commands          = ['DAT', 'MOV', 'ADD', 'SUB', 'JMP', 'JMZ', 'DJZ', 'CMP']
-mods	= ['@', '', '#']
+mods	= ['@', ' ', '#']
 values_expected   = [  1,     2,     2,     2,     1,     2,     2,     2]
 
 class ERedParseError(BaseException):
@@ -22,14 +22,14 @@ def parse_adr(s):
 	return mod,val
 
 def generate_line(code_instr, mod_A, adr_A, mod_B, adr_B):
-	line=     struct.pack('i', code_instr)
-	line=line+struct.pack('i', mod_A)
-	line=line+struct.pack('i', mod_B)
-	line=line+struct.pack('i', adr_A)
-	line=line+struct.pack('i', adr_B)
+	line=struct.pack('iiiii', code_instr, mod_A, mod_B, adr_A, adr_B)
 	return line
 
-def parse(s): 
+def degenerate_line(line):
+	type_,mod_A,mod_B,adr_A,adr_B=struct.unpack('iiiii', line)
+	return "%s %s%d, %s%d" % (commands[type_], mods[mod_A], adr_A, mods[mod_B], adr_B)
+
+def parse_line(s): 
 	out=''
 	s=s.replace('\n', '');
 	s=s.replace(',', ' ');
@@ -43,7 +43,6 @@ def parse(s):
 			code_instr=commands.index(command)
 		else:
 			raise ERedParseError('Unknown command %s' % command) 
-
 		if len(s)==2:
 			mod_A = 1
 			adr_A = 0
@@ -56,6 +55,21 @@ def parse(s):
 
 	return code_instr, mod_A, adr_A, mod_B, adr_B
 
+def decompile(filename_src, filename_dest):
+	src=open(filename_src, "rb")
+	str_=src.read()
+	size=len(str_)
+	if (size % 20) != 0: 
+		raise ERedParseError("Size doesn't match. It should be a multiple of 20. Size is %d." % size)
+	out=""
+	for i in range(0, size//20):
+		out+=degenerate_line(str_[i*20:i*20+20])+"\n"
+	src.close()
+	dest=open(filename_dest, "w")
+	dest.write(out)
+	dest.close()
+	return size//20
+
 def compile(filename_src, filename_dest):
 	dest=open(filename_dest, "wb")
 	count_line=0
@@ -66,7 +80,7 @@ def compile(filename_src, filename_dest):
 			if i[0]!=';':
 				val=None
 				try:
-					instr, mod_A, adr_A, mod_B, adr_B = parse(i)
+					instr, mod_A, adr_A, mod_B, adr_B = parse_line(i)
 					if not instr is None:
 						val=generate_line(instr, mod_A, adr_A, mod_B, adr_B)
 						if not val is None:

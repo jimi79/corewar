@@ -1,4 +1,3 @@
-# // negative numbers ok for addressesinclude <execinfo.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -144,10 +143,34 @@ int compare_two_cells(struct s_core* core, int a, int b) {
 					(core->cells[a].code.adr_B==core->cells[b].code.adr_B));
 }
 
+int save_prog(char filename[MAX_SIZE_SRC], struct s_program *prog) {
+	FILE* out=NULL;
+	if ((out=fopen(filename, "wb")) == NULL) {
+		fprintf(stderr, "Error while riting %s\n", filename);
+		return 0;
+	}
+	int written;
+	int j;
+	for (int i=0; i<prog->size; i++) {
+		j=prog->lines[i].type;
+		written=fwrite(&j, 1, sizeof(j), out); if (!(written)) { break; }
+		j=prog->lines[i].mod_A;
+		written=fwrite(&j, 1, sizeof(j), out); if (!(written)) { break; }
+		j=prog->lines[i].mod_B;
+		written=fwrite(&j, 1, sizeof(j), out); if (!(written)) { break; }
+		j=prog->lines[i].adr_A;
+		written=fwrite(&j, 1, sizeof(j), out); if (!(written)) { break; }
+		j=prog->lines[i].adr_B;
+		written=fwrite(&j, 1, sizeof(j), out); if (!(written)) { break; }
+	} 
+	return (written!=0);
+}
+
+
 int load_prog(char filename[MAX_SIZE_SRC], struct s_program *prog) {
 	FILE* in=NULL;
 	if ((in=fopen(filename, "rb")) == NULL) {
-		fprintf(stderr, "Error while opening %s\n", filename);
+		fprintf(stderr, "Error while reading %s\n", filename);
 		return 0;
 	}
 	int i=0;
@@ -164,7 +187,6 @@ int load_prog(char filename[MAX_SIZE_SRC], struct s_program *prog) {
 		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].mod_B=j; } else break;
 		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].adr_A=j; } else break;
 		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].adr_B=j; } else break; 
-		//TODO check syntax here, like type between 0 and 7, mod between 0 and 3, and that's all
 		i++;
 	} 
 	prog->size=i;
@@ -590,8 +612,7 @@ int print_two_listing(struct s_program *pa, struct s_program *pb) {
 		printf("\n");
 	}
 	return s;
-}
-
+} 
 
 int mutate_change(struct s_program *program, int force_append, int big_mutate) { // 1 force append
 	int idx;
