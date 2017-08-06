@@ -226,3 +226,8 @@ int main()
 
 now i have to save. each new generation, i need to save the source for A and B, to see them fighting.
 and i would like the python program to turn a cw into red, but vice versa too (based on the extension).
+
+
+
+bug rdecompil, doesn't match for jim
+mov doesn't work ?

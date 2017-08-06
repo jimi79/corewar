@@ -2,7 +2,7 @@ import struct
 import re
 
 commands          = ['DAT', 'MOV', 'ADD', 'SUB', 'JMP', 'JMZ', 'DJZ', 'CMP']
-mods	= ['@', ' ', '#']
+mods	= ['#', ' ', '@']
 values_expected   = [  1,     2,     2,     2,     1,     2,     2,     2]
 
 class ERedParseError(BaseException):
@@ -65,9 +65,6 @@ def decompile(filename_src, filename_dest):
 	for i in range(0, size//20):
 		out.append(degenerate_line(str_[i*20:i*20+20]))
 	src.close()
-#	dest=open(filename_dest, "w")
-#	dest.write(out)
-#	dest.close()
 	print('\n'.join(out))
 	return size//20
 
