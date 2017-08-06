@@ -188,6 +188,7 @@ int load_prog(char filename[MAX_SIZE_SRC], struct s_program *prog) {
 		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].adr_A=j; } else break;
 		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].adr_B=j; } else break; 
 		i++;
+		if (i>=MAX_SIZE_SRC) { break; }
 	} 
 	fclose(in);
 	prog->size=i;
