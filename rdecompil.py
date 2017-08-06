@@ -12,7 +12,6 @@ def main():
 	pre, ext=os.path.splitext(args.source)
 	name_dest=pre+'.cw'
 	count_line=lib_rcompil.decompile(args.source, name_dest)
-	print("%d lines decompiled. Decompiled file is %s." % (count_line, name_dest))
 				
 main()
 

@@ -61,13 +61,14 @@ def decompile(filename_src, filename_dest):
 	size=len(str_)
 	if (size % 20) != 0: 
 		raise ERedParseError("Size doesn't match. It should be a multiple of 20. Size is %d." % size)
-	out=""
+	out=[]
 	for i in range(0, size//20):
-		out+=degenerate_line(str_[i*20:i*20+20])+"\n"
+		out.append(degenerate_line(str_[i*20:i*20+20]))
 	src.close()
-	dest=open(filename_dest, "w")
-	dest.write(out)
-	dest.close()
+#	dest=open(filename_dest, "w")
+#	dest.write(out)
+#	dest.close()
+	print('\n'.join(out))
 	return size//20
 
 def compile(filename_src, filename_dest):

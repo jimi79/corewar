@@ -163,9 +163,9 @@ int save_prog(char filename[MAX_SIZE_SRC], struct s_program *prog) {
 		j=prog->lines[i].adr_B;
 		written=fwrite(&j, 1, sizeof(j), out); if (!(written)) { break; }
 	} 
+	fclose(out);
 	return (written!=0);
 }
-
 
 int load_prog(char filename[MAX_SIZE_SRC], struct s_program *prog) {
 	FILE* in=NULL;
@@ -189,6 +189,7 @@ int load_prog(char filename[MAX_SIZE_SRC], struct s_program *prog) {
 		read=fread(&j, 1, sizeof(j), in); if (read) { prog->lines[i].adr_B=j; } else break; 
 		i++;
 	} 
+	fclose(in);
 	prog->size=i;
 	return i;
 }
@@ -490,8 +491,8 @@ int get_random(int *cursor_A, int *cursor_B, struct s_program *prog_A, struct s_
 	int left;
 	left=SIZE_CORE - prog_A->size - prog_B->size;
 	*cursor_B=rand() % left;
-	if (*cursor_B > (*cursor_A - prog_B->size)) {
-		cursor_B=cursor_B + prog_A->size + prog_B->size;
+	if (*cursor_B > (*cursor_A)) {
+		cursor_B=cursor_A + prog_A->size;
 	}
 	return 1;
 }

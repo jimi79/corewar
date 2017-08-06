@@ -181,6 +181,12 @@ int run(int argc, char *argv[]) {
 		if (print_two_listing(&prgA, &prgB)>30) {
 			printf("generation %d, win %0.0f%% of fights\n", generation, percent);
 		}
+
+		// we write the files
+		save_prog("a.red", &prgA);
+		save_prog("b.red", &prgB);
+		printf("both programs saved as a.red (current one) and b.red (old one)\n"); 
+
 		for (i=0;i<prgA.size;i++) {
 			prgB.lines[i].type=prgA.lines[i].type;
 			prgB.lines[i].mod_A=prgA.lines[i].mod_A;
