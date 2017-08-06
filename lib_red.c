@@ -565,6 +565,7 @@ int print_listing_limit(struct s_program *prog, int limit) {
 		printf("\n");
 	}
 	if (more) { printf("...\n"); }
+	return m;
 }
 
 int print_listing(struct s_program *prog) {
@@ -573,6 +574,7 @@ int print_listing(struct s_program *prog) {
 		print_red_line(&prog->lines[i]);
 		printf("\n");
 	}
+	return prog->size;
 }
 
 int print_two_listing(struct s_program *pa, struct s_program *pb) {
@@ -581,11 +583,13 @@ int print_two_listing(struct s_program *pa, struct s_program *pb) {
 	if (s<pb->size) { s=pb->size; }
 	for (int i=0;i<s;i++) {
 		printf("%d: ", i);
+		printf("\033[10G");
 		if (i<pa->size) { print_red_line(&pa->lines[i]); }
 		printf("\033[30G");
 		if (i<pb->size) { print_red_line(&pb->lines[i]); }
 		printf("\n");
 	}
+	return s;
 }
 
 

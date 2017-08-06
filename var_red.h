@@ -1,5 +1,5 @@
 #define SIZE_CORE 4096
-#define MAX_SIZE_SRC 1024 // not less than 30 (or so), because some tests force writing more
+#define MAX_SIZE_SRC 512 // not less than 30 (or so), because some tests force writing more
 
 struct s_red_line {
 	signed int type; /*

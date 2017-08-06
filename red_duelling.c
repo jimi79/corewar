@@ -178,7 +178,9 @@ int run(int argc, char *argv[]) {
 		} 
 		generation++;
 		printf("generation %d, win %0.0f%% of fights\n", generation, percent);
-		print_two_listing(&prgA, &prgB);
+		if (print_two_listing(&prgA, &prgB)>30) {
+			printf("generation %d, win %0.0f%% of fights\n", generation, percent);
+		}
 		for (i=0;i<prgA.size;i++) {
 			prgB.lines[i].type=prgA.lines[i].type;
 			prgB.lines[i].mod_A=prgA.lines[i].mod_A;
