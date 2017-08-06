@@ -491,8 +491,9 @@ int get_random(int *cursor_A, int *cursor_B, struct s_program *prog_A, struct s_
 	int left;
 	left=SIZE_CORE - prog_A->size - prog_B->size;
 	*cursor_B=rand() % left;
-	if (*cursor_B > (*cursor_A)) {
-		cursor_B=cursor_A + prog_A->size;
+	if ((*cursor_B + prog_B->size) > (*cursor_A)) {
+		*cursor_B=*cursor_B + prog_A->size;
+		*cursor_B=adr(*cursor_B);
 	}
 	return 1;
 }

@@ -81,14 +81,15 @@ int test() {
 int run(int argc, char *argv[]) {
 	int i,j,k,l; // some increments
 	float min_percent=75; // percentages of fight to win to be declared better
-	int count_rounds=10; // number of rounds for each meeting 
+	int count_rounds=50; // number of rounds for each meeting 
 	int max_mutations_before_reset=100; // number of mutations before we restart from the first one and try another tree
 	struct s_program prgA;
 	struct s_program prgB; 
 	struct s_core core;
 	prgA.size=0;
 	prgB.size=0; 
-	mutate_change(&prgA, 0, 0); // to force a program of size 1 at least 
+	//mutate_change(&prgA, 0, 0); // to force a program of size 1 at least 
+	load_prog("red/jim.red", &prgA);
 	get_term_size(); // not sure it's useful 
 	int cursor_A, cursor_B;
 	int outcome;
@@ -104,6 +105,9 @@ int run(int argc, char *argv[]) {
 	pthread_t th[count_rounds]; 
 	struct s_fight_params params[count_rounds];
 	void *status=0;
+
+	char filenameA[1024];
+	char filenameB[1024];
 
 	while (1) {
 		n++;
@@ -183,9 +187,11 @@ int run(int argc, char *argv[]) {
 		}
 
 		// we write the files
-		save_prog("a.red", &prgA);
-		save_prog("b.red", &prgB);
-		printf("both programs saved as a.red (current one) and b.red (old one)\n"); 
+		sprintf(filenameA, "a%d.red", generation);
+		sprintf(filenameB, "b%d.red", generation);
+		save_prog(filenameA, &prgA);
+		save_prog(filenameB, &prgB);
+		printf("both programs saved as %s (current one) and %s (old one)\n", filenameA, filenameB); 
 
 		for (i=0;i<prgA.size;i++) {
 			prgB.lines[i].type=prgA.lines[i].type;
