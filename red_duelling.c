@@ -15,15 +15,17 @@ struct s_fight_params {
 	int cursor_A;
 	int cursor_B;
 	int res;
+	struct s_program *prgA; // only read that !
+	struct s_program *prgB;
 };
 
 void *run_fight_thread(void *p) {
 	struct s_fight_params* params=p;
-	//printf("c2=%d\n", params->cursor_A);
-	//params->res=testt3   (&params->core, &params->cursor_A, &params->cursor_B);
+	init_core(&params->core);
+	get_random(&params->cursor_A, &params->cursor_B, params->prgA, params->prgB); 
+	install_program(&params->core, params->prgA, params->cursor_A, 1); 
+	install_program(&params->core, params->prgB, params->cursor_B, 1); 
 	params->res=run_fight(&params->core, &params->cursor_A, &params->cursor_B);
-	//testt1(params->cursor_A);
-	//testt2(&params->cursor_A);
 };
 
 int test3() {
@@ -80,8 +82,8 @@ int test() {
 
 int run(int argc, char *argv[]) {
 	int i,j,k,l; // some increments
-	float min_percent=75; // percentages of fight to win to be declared better
-	int count_rounds=50; // number of rounds for each meeting 
+	float min_percent=85; // percentages of fight to win to be declared better
+	int count_rounds=30; // number of rounds for each meeting 
 	int max_mutations_before_reset=100; // number of mutations before we restart from the first one and try another tree
 	struct s_program prgA;
 	struct s_program prgB; 
@@ -118,11 +120,9 @@ int run(int argc, char *argv[]) {
 			count=0; 
 
 			for (i=0;i<count_rounds;i++) { // n rounds 
-				init_core(&params[i].core);
-				get_random(&params[i].cursor_A, &params[i].cursor_B, &prgA, &prgB); 
-				install_program(&params[i].core, &prgA, params[i].cursor_A, 1); 
-				install_program(&params[i].core, &prgB, params[i].cursor_B, 1); 
-				pthread_create(&th[i], NULL, run_fight_thread, (void*) &params[i]); 
+				params[i].prgA=&prgA;
+				params[i].prgB=&prgB;
+				pthread_create(&th[i], NULL, run_fight_thread, (void*) &params[i]);  // that should init core, get random, and install program.since i only read them, that should be ok
 				count++;
 			}
 
