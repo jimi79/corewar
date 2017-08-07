@@ -142,7 +142,7 @@ int run(int argc, char *argv[]) {
 			}
 			//printf("\n");
 			percent=win_A*1.0/count*100;
-			percent=percent+100*debug_level; // TODO always win so don't loop endlessly if debugging
+			//percent=percent+100*debug_level; // TODO always win so don't loop endlessly if debugging
 			if (percent<min_percent) { // if still losing
 				/*mid_dis++;
 				if (mid_dis>10000) {
