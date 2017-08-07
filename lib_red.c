@@ -612,6 +612,16 @@ int print_two_listing(struct s_program *pa, struct s_program *pb) {
 		if (i<pa->size) { print_red_line(&pa->lines[i]); }
 		printf("\033[30G");
 		if (i<pb->size) { print_red_line(&pb->lines[i]); }
+		
+		if ((i<pb->size) && (i<pa->size)) { 
+			if ((pa->lines[i].type !=pb->lines[i].type ) ||
+					(pa->lines[i].mod_A!=pb->lines[i].mod_A) ||
+					(pa->lines[i].mod_B!=pb->lines[i].mod_B) ||
+					(pa->lines[i].adr_A!=pb->lines[i].adr_A) ||
+					(pa->lines[i].adr_B!=pb->lines[i].adr_B)) { 
+				printf("\033[50G*");
+			}
+		} 
 		printf("\n");
 	}
 	return s;

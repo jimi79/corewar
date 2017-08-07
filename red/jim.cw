@@ -1,4 +1,4 @@
-SUB #4,3 ; because 3 i will erase myself
+SUB #1,3 
 MOV 2,@2
 JMP -2
 DAT #0,#-2

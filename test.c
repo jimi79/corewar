@@ -13,10 +13,25 @@ int test(struct s_test* blah)
 }
 
 int main (int argc, char *argv[] ) {
-	struct s_test blah[100];
-	for (int i=0;i<100;i++) {
-		blah[i].a=i;
-		blah[i].b=i*2;
+	struct s_program a;
+	struct s_program b;
+	a.size=0;
+	for (int i=0; i < 10;i++) {
+		mutate_change(&a, 1, 0);
 	}
-	test(blah); 
+	for (int i=0; i < 30;i++) {
+		mutate_change(&a, 0, 0);
+	}
+	for (int i=0;i<a.size;i++) {
+		printf("copying\n");
+		b.lines[i].type =a.lines[i].type;
+		b.lines[i].mod_A=a.lines[i].mod_A;
+		b.lines[i].mod_B=a.lines[i].mod_B;
+		b.lines[i].adr_A=a.lines[i].adr_A;
+		b.lines[i].adr_B=a.lines[i].adr_B;
+	}
+	b.size=a.size; 
+	mutate_change(&a, 0, 0);
+	print_two_listing(&a,&b);
+
 }
