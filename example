@@ -1,0 +1,23 @@
+#!/bin/bash
+
+echo "That script just show things with some pause, don't press anythg. Check source to understand how it works"|typos.py
+echo "It will cover only the duelling part, not the genome part" |typos.py
+
+echo "This is program A"|typos.py
+cat red/imp.cw|slowly.line
+sleep 1
+echo "Let's turn it into somethg C can understand"|typos.py
+sleep 1
+./rcompil.py red/imp.cw
+sleep 1
+xxd red/imp.red|slowly.line
+echo "This is program B"|typos.py
+cat red/dwarf.cw|slowly.line
+echo "Let's turn it into somethg C can understand"|typos.py
+./rcompil.py red/dwarf.cw
+sleep 1
+xxd red/dwarf.red|slowly.line
+sleep 1
+echo "Let's fight"|typos.py
+sleep 1
+bin/red_engine --srcA red/imp.red --srcB red/dwarf.red --display 3
